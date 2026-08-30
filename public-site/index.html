@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>On Your Mark! Staff Blog</title>
+  <meta name="description" content="夏に高校生と大学生でつくるキャンプ「On Your Mark!」の、スタッフによるブログです。" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ===== Header ===== -->
+  <header class="site-header" id="siteHeader">
+    <a class="brand" href="#" data-action="home" aria-label="On Your Mark! Staff Blog トップへ">
+      <span class="brand__mark" aria-hidden="true">
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="20" r="19" fill="var(--sky)" />
+          <path d="M12 27V13l7 3 9-3v10l-9 3-7-3z" fill="#fff" />
+          <path d="M12 13v18" stroke="#fff" stroke-width="2.4" stroke-linecap="round" />
+        </svg>
+      </span>
+      <span class="brand__text">
+        <span class="brand__en">On Your Mark!</span>
+        <span class="brand__sub">Staff Blog</span>
+      </span>
+    </a>
+
+    <button class="hamburger" id="menuToggle" aria-label="年別メニューを開く" aria-expanded="false" aria-controls="yearDrawer">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+
+  <!-- ===== Year drawer (ふわっと) ===== -->
+  <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+  <nav class="year-drawer" id="yearDrawer" aria-label="年別アーカイブ" hidden>
+    <p class="year-drawer__label">年別アーカイブ</p>
+    <ul class="year-list" id="yearList"><!-- filled by app.js --></ul>
+  </nav>
+
+  <!-- ===== List view ===== -->
+  <main class="wrap" id="listView">
+
+    <!-- Pinned intro (初期固定) -->
+    <section class="pinned" id="pinnedArea" hidden>
+      <span class="pinned__tag">はじめに</span>
+      <h1 class="pinned__title" id="pinnedTitle"></h1>
+      <div class="pinned__excerpt" id="pinnedExcerpt"></div>
+      <span class="pinned__track" aria-hidden="true"></span>
+    </section>
+
+    <section class="feed-section">
+      <div class="feed-head">
+        <h2 class="feed-head__title" id="feedTitle">最新の記事</h2>
+        <button class="feed-head__reset" id="feedReset" hidden>すべての記事にもどる</button>
+      </div>
+      <ul class="feed" id="feed"><!-- filled by app.js --></ul>
+      <p class="feed-empty" id="feedEmpty" hidden>まだ記事がありません。</p>
+    </section>
+  </main>
+
+  <!-- ===== Article view ===== -->
+  <main class="wrap article-wrap" id="articleView" hidden>
+    <button class="back-link" data-action="home">← 記事一覧にもどる</button>
+    <article class="article">
+      <div class="article__meta">
+        <time class="stamp" id="articleDate"></time>
+        <span class="article__editor" id="articleEditor"></span>
+      </div>
+      <h1 class="article__title" id="articleTitle"></h1>
+      <div class="article__photos" id="articlePhotos"></div>
+      <div class="article__body" id="articleBody"></div>
+    </article>
+  </main>
+
+  <!-- ===== Footer ===== -->
+  <footer class="site-footer">
+    <p class="site-footer__name">On Your Mark! Staff Blog</p>
+    <p class="site-footer__note">高校生と大学生でつくる、夏のキャンプの記録。</p>
+    <a class="site-footer__staff" href="../admin-site/login.html">スタッフ用ログイン →</a>
+  </footer>
+
+  <!-- Scripts (external only) -->
+  <script src="js/app.js" defer></script>
+</body>
+</html>
