@@ -11,6 +11,7 @@ public-site/
 ├─ index.html                … 画面の骨組み（JSは書かない）
 ├─ css/style.css              … 見た目（水色基調）
 ├─ js/app.js                  … 動き（読み込み・一覧・記事・年別メニュー）
+├─ js/firebase-config.js      … Firebase設定の入れ物（後でコンソールの値に差し替え）
 └─ data/sample-posts.json     … サンプル記事（=後でFirestoreに置き換える形）
 ```
 > ルール：**HTMLの中にJavaScriptは書かない**。動きは必ず `js/` の中に。
@@ -28,6 +29,18 @@ python3 -m http.server 8000
 - 編集者サイト（Googleログイン → 記事の作成・写真アップ・一時保存/公開）
 - Firebase（Firestore / Storage / Hosting）への接続
 - `sample-posts.json` を Firestore の `published` に置き換え
+
+## Firebase接続時のセキュリティ設定（忘れずに）
+`js/firebase-config.js` のウェブ用設定（`apiKey` など）は、クライアントに公開される前提の値。
+公開リポジトリに入っていても設計上は問題なく、`apiKey` は秘密鍵ではない（認証を通すための識別子）。
+実際の防御は次で行う:
+
+- **Firestore / Storage のセキュリティルール**
+  - 読み取り: `status == "published"` のみ全公開
+  - 書き込み: ログイン済みのスタッフ（許可リストのアカウント）のみ
+- **APIキーの制限**（Google Cloud コンソール）
+  - HTTPリファラーを自サイトのドメインに限定する
+- 必要に応じて **App Check** を導入する
 
 ## 記事データの形（1件）
 ```json
