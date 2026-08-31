@@ -3,20 +3,21 @@
 夏に高校生と大学生でつくるキャンプ「On Your Mark!」のスタッフブログ。
 
 ## いまできているもの
-- `public-site/` … 一般公開サイト（閲覧者向け）。今はサンプルデータで動きます。
+- `public-site/` … 一般公開サイト（閲覧者向け）。Firestore の `posts`（`status=="published"`）を読みます。
 - `admin-site/` … 編集者サイト（Googleログイン → 記事の一時保存/公開）。Firestore / Storage に接続。
 
-公開サイトの記事データは、いまは空（`data/sample-posts.json` の `posts: []`）です。
-記事0件でもエラーにならず「まだ記事がありません」と表示されます。次のステップで Firestore 読み込みに切り替えます。
+記事が0件でもエラーにならず「まだ記事がありません」と表示されます。
+一般ユーザー（未ログイン）が公開記事を読めるように、Firestoreのセキュリティルールで
+`posts` の `status=="published"` を公開読み取り可にしておく必要があります（ルール設定は別ステップ）。
 
 ## フォルダ構成
 ```
 public-site/
 ├─ index.html                … 画面の骨組み（JSは書かない）
 ├─ css/style.css              … 見た目（水色基調）
-├─ js/app.js                  … 動き（読み込み・一覧・記事・年別/カテゴリメニュー・ページ送り）
+├─ js/app.js                  … 動き（Firestore読み込み・一覧・記事・年別/カテゴリメニュー・ページ送り）
 ├─ js/firebase-config.js      … Firebase設定＋初期化
-└─ data/sample-posts.json     … サンプル記事（=Firestoreの posts と同じ形）
+└─ data/sample-posts.json     … 旧サンプル（現在は未使用。記事1件の形の参考用に残置）
 
 admin-site/
 ├─ login.html                … Googleログイン画面
@@ -52,7 +53,7 @@ python3 -m http.server 8000
 
 ## これから
 - Firestore / Storage のセキュリティルール設定（下記）
-- 公開サイト `js/app.js` の `loadPosts()` を Firestore（`posts` の `status=="published"`）読み込みに差し替え
+  - 特に `posts` の `status=="published"` を**未ログインでも読み取り可**にする（公開サイトの表示に必須）
 
 ## デプロイ（Firebase Hosting・マルチサイト）
 公開サイトと編集サイトは**別々の Hosting サイト**として配信します（`firebase.json` の `hosting` を配列で2つ定義）。
@@ -97,7 +98,7 @@ firebase deploy --only hosting:admin      # 編集サイトだけ
 - 必要に応じて **App Check** を導入する
 
 ## 記事データの形（1件）
-Firestoreコレクション `posts` の1ドキュメント。`sample-posts.json` も同じフィールド名です。
+Firestoreコレクション `posts` の1ドキュメント（公開サイトは `status=="published"` のみ読み込み）。
 ```json
 {
   "id": "p-20260830",

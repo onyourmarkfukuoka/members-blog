@@ -21,24 +21,47 @@ const categoryLabel = (key) => {
 const categoryOf = (p) => (p && p.category) || "other";
 
 /* -----------------------------------------------------------
-   データの読み込み
-   いまはサンプルJSONを読みます。
-   → 後でFirebaseにする時は、この関数の中だけを
-     「Firestoreの posts コレクションから status=="published" を
-      取ってくる」処理に差し替えればOK（返す形は同じ配列）。
+   データの読み込み（Firestore）
+   posts コレクションから status == "published" の記事を取得し、
+   これまで（sample-posts.json）と同じ形の配列にして返す。
+
+   - 返す各要素: id, pinned, status, category, photos,
+                 date, title, editorName, body
+   - 新しい順（date の降順）に並べて返す
+   - status の等値フィルタだけにして、複合インデックスを不要にする
+     （並び替えはクライアント側）
+   - Firestore SDK(compat) の読み込みと初期化は
+     index.html / firebase-config.js 側で済んでいる前提
+
+   ※ 一般ユーザー（未ログイン）が読めるようにするには、Firestoreの
+     セキュリティルールで posts の status=="published" を公開読み取り可に
+     しておく必要があります（ルール設定は別ステップ）。
 ----------------------------------------------------------- */
 async function loadPosts() {
-  const res = await fetch("data/sample-posts.json");
-  if (!res.ok) throw new Error("記事の読み込みに失敗しました");
-  const data = await res.json();
-  // JSONが空（{"posts": []} など）でも落ちないようにする。
-  // Firestore 接続時は、この関数の中身だけを
-  //   posts コレクションの status=="published" を取得する処理に差し替えればOK
-  //   （返す形は同じ「記事オブジェクトの配列」）。
-  const list = Array.isArray(data) ? data
-    : (data && Array.isArray(data.posts)) ? data.posts
-    : [];
-  return list.filter((p) => p && p.status === "published");
+  const db = firebase.firestore();
+  const snap = await db
+    .collection("posts")
+    .where("status", "==", "published")
+    .get();
+
+  const posts = snap.docs.map((doc) => {
+    const d = doc.data() || {};
+    return {
+      id: doc.id,
+      pinned: d.pinned === true,
+      status: d.status,
+      category: d.category || "other",
+      photos: Array.isArray(d.photos) ? d.photos.slice(0, 2) : [],
+      date: d.date || "",
+      title: d.title || "",
+      editorName: d.editorName || "",
+      body: d.body || ""
+    };
+  });
+
+  // 新しい順（date の降順）。日付が無いものは末尾へ。
+  posts.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  return posts;
 }
 
 /* ----------------------- 状態 ----------------------- */
