@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>On Your Mark! Staff Blog Edit — 編集</title>
+  <meta name="robots" content="noindex" />
+
+  <!-- Fonts（公開サイトと同じ） -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ログイン確認が終わるまでは中身を隠しておく（ちらつき防止） -->
+  <div class="auth-gate" id="authGate">
+    <p>ログイン状態を確認しています…</p>
+  </div>
+
+  <div class="admin-app" id="adminApp" hidden>
+
+    <!-- ===== Header ===== -->
+    <header class="admin-header">
+      <a class="brand" href="index.html">
+        <span class="brand__mark">
+          <img src="images/logo.svg" alt="On Your Mark! ロゴ" />
+        </span>
+        <span class="brand__text">
+          <span class="brand__en">On Your Mark!</span>
+          <span class="brand__sub">Staff Blog Edit</span>
+        </span>
+      </a>
+
+      <div class="admin-header__user">
+        <span class="welcome" id="welcome"></span>
+        <button class="btn-ghost" id="logoutBtn" type="button">ログアウト</button>
+      </div>
+    </header>
+
+    <main class="admin-main">
+
+      <!-- ===== 編集フォーム ===== -->
+      <section class="editor-panel">
+        <div class="editor-panel__head">
+          <h1 class="editor-panel__title" id="formTitle">新しい記事</h1>
+          <button class="btn-ghost" id="newPostBtn" type="button">＋ 新規作成</button>
+        </div>
+
+        <form class="post-form" id="postForm">
+          <div class="field">
+            <label class="field__label" for="fTitle">タイトル</label>
+            <input class="field__input" type="text" id="fTitle" name="title"
+                   placeholder="記事のタイトル" autocomplete="off" required />
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label class="field__label" for="fDate">日付</label>
+              <input class="field__input" type="date" id="fDate" name="date" required />
+            </div>
+            <div class="field">
+              <label class="field__label" for="fEditor">編集者名</label>
+              <input class="field__input" type="text" id="fEditor" name="editorName"
+                     placeholder="例：はるか" autocomplete="off" required />
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="fCategory">カテゴリ</label>
+            <select class="field__input field__input--select" id="fCategory" name="category" required>
+              <option value="camp">キャンプ当日</option>
+              <option value="meeting">ミーティング</option>
+              <option value="other" selected>その他</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <span class="field__label">写真（最大2枚）</span>
+            <div class="photo-uploader" id="photoUploader">
+              <ul class="photo-list" id="photoList"><!-- editor.js が入れます --></ul>
+              <label class="photo-add" id="photoAddLabel">
+                <input type="file" id="photoInput" accept="image/*" multiple hidden />
+                <span>＋ 写真を追加</span>
+              </label>
+            </div>
+            <p class="field__hint" id="photoHint">JPEG / PNG など。保存・公開したときにアップロードされます。</p>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="fBody">本文</label>
+            <textarea class="field__input field__input--area" id="fBody" name="body"
+                      rows="14" placeholder="ここに本文を書きます。段落は空行で区切ってください。" required></textarea>
+          </div>
+
+          <p class="form-status" id="formStatus" role="status" aria-live="polite"></p>
+
+          <div class="form-actions">
+            <button class="btn btn--ghost" type="button" id="saveDraftBtn">一時保存</button>
+            <button class="btn btn--primary" type="button" id="publishBtn">公開</button>
+          </div>
+          <p class="form-hint" id="editingHint" hidden></p>
+        </form>
+      </section>
+
+      <!-- ===== 記事一覧 ===== -->
+      <section class="list-panel">
+        <h2 class="list-panel__title">記事・下書き一覧</h2>
+        <p class="list-panel__empty" id="listEmpty" hidden>まだ記事がありません。</p>
+        <ul class="post-list" id="postList"><!-- editor.js が入れます --></ul>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ===== Scripts (external only) =====
+       読み込み順: Firebase本体 → firebase-config.js → editor.js
+       すべて defer なので、記述順のまま順番に実行されます。 -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js" defer></script>
+  <script src="js/firebase-config.js" defer></script>
+  <script src="js/editor.js" defer></script>
+</body>
+</html>

@@ -18,12 +18,8 @@
   <!-- ===== Header ===== -->
   <header class="site-header" id="siteHeader">
     <a class="brand" href="#" data-action="home" aria-label="On Your Mark! Staff Blog トップへ">
-      <span class="brand__mark" aria-hidden="true">
-        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="20" cy="20" r="19" fill="var(--sky)" />
-          <path d="M12 27V13l7 3 9-3v10l-9 3-7-3z" fill="#fff" />
-          <path d="M12 13v18" stroke="#fff" stroke-width="2.4" stroke-linecap="round" />
-        </svg>
+      <span class="brand__mark">
+        <img src="images/logo.svg" alt="On Your Mark! ロゴ" />
       </span>
       <span class="brand__text">
         <span class="brand__en">On Your Mark!</span>
@@ -39,8 +35,17 @@
   <!-- ===== Year drawer (ふわっと) ===== -->
   <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
   <nav class="year-drawer" id="yearDrawer" aria-label="年別アーカイブ" hidden>
-    <p class="year-drawer__label">年別アーカイブ</p>
-    <ul class="year-list" id="yearList"><!-- filled by app.js --></ul>
+    <!-- Step 1: 年をえらぶ -->
+    <div class="drawer-step" id="yearStep">
+      <p class="year-drawer__label">年別アーカイブ</p>
+      <ul class="year-list" id="yearList"><!-- filled by app.js --></ul>
+    </div>
+    <!-- Step 2: カテゴリをえらぶ -->
+    <div class="drawer-step" id="catStep" hidden>
+      <button class="drawer-back" id="catBack" type="button">← 年をえらび直す</button>
+      <p class="year-drawer__label" id="catStepLabel">カテゴリをえらぶ</p>
+      <ul class="year-list" id="catList"><!-- filled by app.js --></ul>
+    </div>
   </nav>
 
   <!-- ===== List view ===== -->
@@ -61,6 +66,7 @@
       </div>
       <ul class="feed" id="feed"><!-- filled by app.js --></ul>
       <p class="feed-empty" id="feedEmpty" hidden>まだ記事がありません。</p>
+      <nav class="pagination" id="pagination" aria-label="ページ送り" hidden><!-- filled by app.js --></nav>
     </section>
   </main>
 
@@ -85,7 +91,19 @@
     <a class="site-footer__staff" href="../admin-site/login.html">スタッフ用ログイン →</a>
   </footer>
 
-  <!-- Scripts (external only) -->
+  <!-- ===== Scripts (external only) =====
+       読み込み順: Firebase本体 → firebase-config.js → app.js
+       すべて defer を付けているので、記述順のまま順番に実行されます。 -->
+
+  <!-- Firebase Web SDK (compat版) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" defer></script>
+
+  <!-- Firebase 設定＋初期化 -->
+  <script src="js/firebase-config.js" defer></script>
+
+  <!-- アプリ本体 -->
   <script src="js/app.js" defer></script>
 </body>
 </html>

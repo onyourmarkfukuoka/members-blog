@@ -1,0 +1,17 @@
+{
+  "projects": {
+    "default": "onyourmarkfukuoka-blog"
+  },
+  "targets": {
+    "onyourmarkfukuoka-blog": {
+      "hosting": {
+        "public": [
+          "onyourmarkfukuoka-blog"
+        ],
+        "admin": [
+          "onyourmarkfukuoka-blog-admin"
+        ]
+      }
+    }
+  }
+}

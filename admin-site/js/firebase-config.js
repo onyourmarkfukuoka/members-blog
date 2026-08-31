@@ -1,19 +1,11 @@
 /* =========================================================
-   On Your Mark! Staff Blog — Firebase 設定の入れ物
+   On Your Mark! Staff Blog Edit — Firebase 設定の入れ物
    ---------------------------------------------------------
-   このファイルは Firebase のウェブ用SDK設定（firebaseConfig）を
-   置いておくための「入れ物」です。
-   まだ実際の値は入っていません。プレースホルダーのままです。
-
-   ▼ 使い方（あとで自分で作業するところ）
-   1. Firebase コンソール → プロジェクトの設定 → 「マイアプリ」→
-      ウェブアプリの「SDK の設定と構成」を開く
-   2. そこに表示される firebaseConfig の値をコピーする
-   3. 下の "ここに〜を貼る" の部分を、コピーした値に書き換える
-      （ダブルクォート " " はそのまま残して、中身だけ差し替える）
+   公開サイト（public-site/js/firebase-config.js）と
+   まったく同じ設定を使います。内容もそろえてあります。
 
    ※ このプロジェクトの方針どおり、HTMLには書かず独立した .js にしています。
-   ※ 後続のスクリプト（例: js/app.js や編集者サイト側）から
+   ※ 後続のスクリプト（js/login.js / js/editor.js）から
      firebaseConfig という名前で参照できます。
    ========================================================= */
 
@@ -26,16 +18,15 @@ const firebaseConfig = {
   appId: "1:268417636152:web:108ed576ccf51a94bb53cd"
 };
 // モジュール形式で読み込む場合にも参照できるよう、window にも載せておきます。
-// （通常の <script> 読み込みなら firebaseConfig をそのまま使えます）
 window.firebaseConfig = firebaseConfig;
 
 /* ---------------------------------------------------------
    Firebase の初期化
    ---------------------------------------------------------
-   index.html で先に読み込んだ compat版SDK（firebase-app / firebase-auth /
-   firebase-firestore）が使える前提です。
+   各HTMLで先に読み込んだ compat版SDK（firebase-app / firebase-auth /
+   firebase-firestore、編集画面ではさらに firebase-storage）が使える前提です。
    ここで一度だけ initializeApp を呼び、以降は firebase.auth() /
-   firebase.firestore() を各スクリプトから使えるようにします。
+   firebase.firestore() / firebase.storage() を各スクリプトから使えるようにします。
    （二重初期化を避けるため、すでに初期化済みなら何もしません）
    --------------------------------------------------------- */
 if (typeof firebase !== "undefined") {
@@ -44,6 +35,6 @@ if (typeof firebase !== "undefined") {
   }
 } else {
   console.error(
-    "Firebase SDK が読み込まれていません。index.html の <script> 読み込み順を確認してください（Firebase本体 → firebase-config.js → app.js）。"
+    "Firebase SDK が読み込まれていません。HTMLの <script> 読み込み順を確認してください（Firebase本体 → firebase-config.js → login.js / editor.js）。"
   );
 }

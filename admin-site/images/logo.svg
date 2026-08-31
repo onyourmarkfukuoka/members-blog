@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-14 -6 110 110" role="img" aria-label="On Your Mark! ロゴ">
+  <!-- つま先 -->
+  <circle cx="42" cy="13" r="9.5" fill="#16A5C6"/>
+  <circle cx="28" cy="25" r="8.5" fill="#D42B2B"/>
+  <circle cx="55" cy="27" r="8"   fill="#EFA200"/>
+  <circle cx="24" cy="38" r="5.5" fill="#D51C7E"/>
+  <!-- 母指球 -->
+  <circle cx="42" cy="39" r="10.5" fill="#57AC3B"/>
+  <circle cx="60" cy="42" r="6.5"  fill="#D51C7E"/>
+  <!-- 土踏まず -->
+  <circle cx="31" cy="53" r="7.5" fill="#EFA200"/>
+  <circle cx="53" cy="51" r="5.5" fill="#D42B2B"/>
+  <circle cx="43" cy="55" r="4"   fill="#16A5C6"/>
+  <!-- 緑の丸 -->
+  <circle cx="40" cy="68" r="6"   fill="#57AC3B"/>
+  <!-- かかと：穴あき円で水色の丸を囲む。切れ目を上にして緑の丸を包む -->
+  <circle cx="42" cy="81" r="12.5" fill="none" stroke="#16A5C6" stroke-width="4.2"
+          stroke-linecap="round" stroke-dasharray="60 19" transform="rotate(-48 42 81)"/>
+  <circle cx="42" cy="81" r="7.5" fill="#16A5C6"/>
+</svg>

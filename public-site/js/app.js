@@ -4,21 +4,50 @@
    ========================================================= */
 
 /* -----------------------------------------------------------
+   カテゴリの定義
+   Firestore / sample-posts.json の category フィールドは
+   "camp" | "meeting" | "other" の3値。表示名はここで対応づける。
+   category が無い（未設定の）記事は "other"（その他）として扱う。
+----------------------------------------------------------- */
+const CATEGORIES = [
+  { key: "camp",    label: "キャンプ当日" },
+  { key: "meeting", label: "ミーティング" },
+  { key: "other",   label: "その他" }
+];
+const categoryLabel = (key) => {
+  const found = CATEGORIES.find((c) => c.key === key);
+  return found ? found.label : "その他";
+};
+const categoryOf = (p) => (p && p.category) || "other";
+
+/* -----------------------------------------------------------
    データの読み込み
    いまはサンプルJSONを読みます。
    → 後でFirebaseにする時は、この関数の中だけを
-     「Firestoreの published コレクションを取ってくる」処理に
-     差し替えればOK（返す形は同じ配列）。
+     「Firestoreの posts コレクションから status=="published" を
+      取ってくる」処理に差し替えればOK（返す形は同じ配列）。
 ----------------------------------------------------------- */
 async function loadPosts() {
   const res = await fetch("data/sample-posts.json");
   if (!res.ok) throw new Error("記事の読み込みに失敗しました");
   const data = await res.json();
-  return data.posts.filter((p) => p.status === "published");
+  // JSONが空（{"posts": []} など）でも落ちないようにする。
+  // Firestore 接続時は、この関数の中身だけを
+  //   posts コレクションの status=="published" を取得する処理に差し替えればOK
+  //   （返す形は同じ「記事オブジェクトの配列」）。
+  const list = Array.isArray(data) ? data
+    : (data && Array.isArray(data.posts)) ? data.posts
+    : [];
+  return list.filter((p) => p && p.status === "published");
 }
 
 /* ----------------------- 状態 ----------------------- */
 let ALL_POSTS = [];
+const PAGE_SIZE = 5;
+// いま表示している絞り込み条件とページ番号
+let view = { year: null, category: null, page: 1 };
+// カテゴリ選択ステップで「どの年を選んだか」を一時的に覚えておく
+let pendingYear = null;
 
 /* ----------------------- 要素 ----------------------- */
 const el = (id) => document.getElementById(id);
@@ -29,8 +58,15 @@ const feed        = el("feed");
 const feedEmpty   = el("feedEmpty");
 const feedTitle   = el("feedTitle");
 const feedReset   = el("feedReset");
+const pagination  = el("pagination");
 const pinnedArea  = el("pinnedArea");
-const yearList    = el("yearList");
+
+const yearStep     = el("yearStep");
+const yearList     = el("yearList");
+const catStep      = el("catStep");
+const catList      = el("catList");
+const catBack      = el("catBack");
+const catStepLabel = el("catStepLabel");
 
 const menuToggle    = el("menuToggle");
 const yearDrawer    = el("yearDrawer");
@@ -46,11 +82,18 @@ function excerpt(body, n = 70) {
   const flat = body.replace(/\n+/g, " ").trim();
   return flat.length > n ? flat.slice(0, n) + "…" : flat;
 }
-// 通常記事を新しい順に
+// 通常記事（pinned以外）を新しい順に
 function sortedNormalPosts(posts) {
   return posts
     .filter((p) => !p.pinned)
     .sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+// いまの view 条件で絞り込んだ記事（新しい順）
+function filteredPosts() {
+  let posts = sortedNormalPosts(ALL_POSTS);
+  if (view.year) posts = posts.filter((p) => yearOf(p.date) === view.year);
+  if (view.category) posts = posts.filter((p) => categoryOf(p) === view.category);
+  return posts;
 }
 
 /* ----------------------- 初期固定ポスト ----------------------- */
@@ -70,15 +113,31 @@ function renderPinned() {
   });
 }
 
-/* ----------------------- 記事一覧 ----------------------- */
-function renderFeed(filterYear = null) {
-  let posts = sortedNormalPosts(ALL_POSTS);
-  if (filterYear) posts = posts.filter((p) => yearOf(p.date) === filterYear);
+/* ----------------------- 見出し ----------------------- */
+function updateFeedHead() {
+  let title = "最新の記事";
+  if (view.year && view.category)      title = `${view.year}年 ・ ${categoryLabel(view.category)}`;
+  else if (view.year)                  title = `${view.year}年の記事`;
+  else if (view.category)              title = categoryLabel(view.category);
+  feedTitle.textContent = title;
+  feedReset.hidden = !(view.year || view.category);
+}
+
+/* ----------------------- 記事一覧（ページ送り付き） ----------------------- */
+function renderFeed() {
+  const posts = filteredPosts();
+
+  const totalPages = Math.max(1, Math.ceil(posts.length / PAGE_SIZE));
+  if (view.page > totalPages) view.page = totalPages;
+  if (view.page < 1) view.page = 1;
+
+  const start = (view.page - 1) * PAGE_SIZE;
+  const pagePosts = posts.slice(start, start + PAGE_SIZE);
 
   feed.innerHTML = "";
   feedEmpty.hidden = posts.length > 0;
 
-  posts.forEach((p) => {
+  pagePosts.forEach((p) => {
     const card = document.createElement("button");
     card.className = "post-card";
     card.setAttribute("aria-label", `${p.title} を読む`);
@@ -92,10 +151,13 @@ function renderFeed(filterYear = null) {
     body.innerHTML = `
       <div class="post-card__meta">
         <time class="stamp">${formatDate(p.date)}</time>
-        <span class="editor-badge">${p.editorName}</span>
+        <span class="cat-chip"></span>
+        <span class="editor-badge"></span>
       </div>
       <h3 class="post-card__title"></h3>
       <p class="post-card__excerpt"></p>`;
+    body.querySelector(".cat-chip").textContent = categoryLabel(categoryOf(p));
+    body.querySelector(".editor-badge").textContent = p.editorName;
     body.querySelector(".post-card__title").textContent = p.title;
     body.querySelector(".post-card__excerpt").textContent = excerpt(p.body);
 
@@ -104,7 +166,52 @@ function renderFeed(filterYear = null) {
     feed.appendChild(card);
   });
 
+  renderPagination(totalPages);
   revealOnScroll();
+}
+
+/* ----------------------- ページネーション ----------------------- */
+// 1 2 3 … の並びを組み立てる（現在ページの前後1つ＋先頭・末尾は常に表示）
+function pageNumbers(current, total) {
+  const around = 1;
+  const out = [];
+  for (let i = 1; i <= total; i++) {
+    const keep = i === 1 || i === total || (i >= current - around && i <= current + around);
+    if (keep) {
+      out.push(i);
+    } else if (out[out.length - 1] !== "…") {
+      out.push("…");
+    }
+  }
+  return out;
+}
+
+function renderPagination(totalPages) {
+  pagination.innerHTML = "";
+  pagination.hidden = totalPages <= 1;
+  if (totalPages <= 1) return;
+
+  pageNumbers(view.page, totalPages).forEach((n) => {
+    if (n === "…") {
+      const gap = document.createElement("span");
+      gap.className = "pagination__gap";
+      gap.textContent = "…";
+      gap.setAttribute("aria-hidden", "true");
+      pagination.appendChild(gap);
+      return;
+    }
+    const btn = document.createElement("button");
+    btn.className = "pagination__num" + (n === view.page ? " is-current" : "");
+    btn.textContent = String(n);
+    btn.setAttribute("aria-label", `${n}ページ目`);
+    if (n === view.page) btn.setAttribute("aria-current", "page");
+    btn.addEventListener("click", () => {
+      view.page = n;
+      renderFeed();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+    pagination.appendChild(btn);
+  });
 }
 
 /* ----------------------- 記事詳細 ----------------------- */
@@ -118,9 +225,9 @@ function openArticle(id) {
 
   const photos = el("articlePhotos");
   photos.innerHTML = "";
-  const n = (p.photos || []).length;
-  photos.className = "article__photos" + (n >= 2 ? ` count-${Math.min(n, 3)}` : "");
-  (p.photos || []).slice(0, 3).forEach((src) => {
+  const pics = (p.photos || []).slice(0, 2); // 写真は最大2枚
+  photos.className = "article__photos" + (pics.length === 2 ? " count-2" : "");
+  pics.forEach((src) => {
     const img = document.createElement("img");
     img.src = src; img.alt = p.title; img.loading = "lazy";
     photos.appendChild(img);
@@ -144,36 +251,99 @@ function showList() {
   listView.hidden = false;
 }
 
-/* ----------------------- 年別ドロワー ----------------------- */
+/* ----------------------- トップへ戻す ----------------------- */
+function goHome() {
+  view = { year: null, category: null, page: 1 };
+  showList();
+  updateFeedHead();
+  renderFeed();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ----------------------- 絞り込みを適用 ----------------------- */
+function applyView(year, category) {
+  view = { year: year || null, category: category || null, page: 1 };
+  showList();
+  updateFeedHead();
+  renderFeed();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ----------------------- ドロワー：年ステップ ----------------------- */
 function renderYearList() {
-  const years = [...new Set(sortedNormalPosts(ALL_POSTS).map((p) => yearOf(p.date)))]
-    .sort((a, b) => b - a);
+  const normals = sortedNormalPosts(ALL_POSTS);
+  const years = [...new Set(normals.map((p) => yearOf(p.date)))].sort((a, b) => b - a);
+
+  // 記事が1件も無いときは、年別メニュー（ハンバーガー）自体を出さない
+  menuToggle.hidden = normals.length === 0;
+  if (normals.length === 0) return;
+
   yearList.innerHTML = "";
 
-  const makeItem = (label, count, year) => {
+  const makeItem = (label, count, onClick) => {
     const li = document.createElement("li");
     const btn = document.createElement("button");
-    btn.innerHTML = `<span>${label}</span><span class="count">${count}</span>`;
+    btn.innerHTML = `<span></span><span class="count">${count}</span>`;
+    btn.querySelector("span").textContent = label;
+    btn.addEventListener("click", onClick);
+    li.appendChild(btn);
+    return li;
+  };
+
+  // 「すべて」= 全カテゴリ・全年（トップと同じ）
+  yearList.appendChild(makeItem("すべて", normals.length, () => {
+    goHome();
+    closeDrawer();
+  }));
+
+  // 年をえらぶと、次のステップ（カテゴリ）へ
+  years.forEach((y) => {
+    const count = normals.filter((p) => yearOf(p.date) === y).length;
+    yearList.appendChild(makeItem(`${y}`, count, () => openCategoryStep(y)));
+  });
+}
+
+/* ----------------------- ドロワー：カテゴリステップ ----------------------- */
+function openCategoryStep(year) {
+  pendingYear = year;
+  catStepLabel.textContent = `${year}年 ・ カテゴリをえらぶ`;
+
+  const yearPosts = sortedNormalPosts(ALL_POSTS).filter((p) => yearOf(p.date) === year);
+  catList.innerHTML = "";
+
+  const makeItem = (label, count, category) => {
+    const li = document.createElement("li");
+    const btn = document.createElement("button");
+    btn.innerHTML = `<span></span><span class="count">${count}</span>`;
+    btn.querySelector("span").textContent = label;
     btn.addEventListener("click", () => {
-      showList();
-      renderFeed(year);
-      feedTitle.textContent = year ? `${year}年の記事` : "最新の記事";
-      feedReset.hidden = !year;
+      applyView(year, category);
       closeDrawer();
-      window.scrollTo({ top: 0, behavior: "smooth" });
     });
     li.appendChild(btn);
     return li;
   };
 
-  yearList.appendChild(makeItem("すべて", sortedNormalPosts(ALL_POSTS).length, null));
-  years.forEach((y) => {
-    const c = sortedNormalPosts(ALL_POSTS).filter((p) => yearOf(p.date) === y).length;
-    yearList.appendChild(makeItem(`${y}`, c, y));
+  // その年の全カテゴリ
+  catList.appendChild(makeItem("すべて", yearPosts.length, null));
+  // カテゴリごと
+  CATEGORIES.forEach((c) => {
+    const count = yearPosts.filter((p) => categoryOf(p) === c.key).length;
+    catList.appendChild(makeItem(c.label, count, c.key));
   });
+
+  yearStep.hidden = true;
+  catStep.hidden = false;
 }
 
+function backToYearStep() {
+  catStep.hidden = true;
+  yearStep.hidden = false;
+}
+
+/* ----------------------- ドロワー開閉 ----------------------- */
 function openDrawer() {
+  backToYearStep(); // 開くときは必ず年ステップから
   yearDrawer.hidden = false;
   drawerBackdrop.hidden = false;
   requestAnimationFrame(() => {
@@ -186,7 +356,11 @@ function closeDrawer() {
   yearDrawer.classList.remove("show");
   drawerBackdrop.classList.remove("show");
   menuToggle.setAttribute("aria-expanded", "false");
-  setTimeout(() => { yearDrawer.hidden = true; drawerBackdrop.hidden = true; }, 340);
+  setTimeout(() => {
+    yearDrawer.hidden = true;
+    drawerBackdrop.hidden = true;
+    backToYearStep();
+  }, 340);
 }
 function toggleDrawer() {
   menuToggle.getAttribute("aria-expanded") === "true" ? closeDrawer() : openDrawer();
@@ -214,23 +388,16 @@ function revealOnScroll() {
 function bindGlobalEvents() {
   menuToggle.addEventListener("click", toggleDrawer);
   drawerBackdrop.addEventListener("click", closeDrawer);
+  catBack.addEventListener("click", backToYearStep);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
 
-  feedReset.addEventListener("click", () => {
-    renderFeed(null);
-    feedTitle.textContent = "最新の記事";
-    feedReset.hidden = true;
-  });
+  feedReset.addEventListener("click", goHome);
 
-  // data-action="home" のリンク/ボタンは一覧へ戻す
+  // data-action="home" のリンク/ボタンは一覧トップへ戻す
   document.querySelectorAll('[data-action="home"]').forEach((node) => {
     node.addEventListener("click", (e) => {
       e.preventDefault();
-      showList();
-      renderFeed(null);
-      feedTitle.textContent = "最新の記事";
-      feedReset.hidden = true;
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      goHome();
     });
   });
 }
@@ -241,7 +408,8 @@ async function init() {
   try {
     ALL_POSTS = await loadPosts();
     renderPinned();
-    renderFeed(null);
+    updateFeedHead();
+    renderFeed();
     renderYearList();
   } catch (err) {
     feedEmpty.hidden = false;

@@ -1,0 +1,36 @@
+{
+  "hosting": [
+    {
+      "target": "public",
+      "public": "public-site",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "redirects": [
+        {
+          "source": "/admin-site/**",
+          "destination": "https://onyourmarkfukuoka-blog-admin.web.app/login.html",
+          "type": 302
+        }
+      ]
+    },
+    {
+      "target": "admin",
+      "public": "admin-site",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "redirects": [
+        {
+          "source": "/public-site/**",
+          "destination": "https://onyourmarkfukuoka-blog.web.app/",
+          "type": 302
+        }
+      ]
+    }
+  ]
+}
