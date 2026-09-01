@@ -139,6 +139,59 @@ body {
   font-family: var(--font-mono); font-size: .72rem; font-weight: 400; color: var(--ink-soft);
 }
 
+/* ---------- Hero（横長ビジュアル＋スクロール演出） ---------- */
+.hero {
+  position: relative;
+  height: clamp(320px, 62vh, 560px);
+  overflow: hidden;
+  border-bottom: 1px solid var(--line);
+  /* 写真が未設定・読み込み失敗でも見栄えするように下地を用意 */
+  background: linear-gradient(120deg, var(--sky-deep) 0%, var(--sky) 55%, #83d1f2 100%);
+}
+.hero__media {
+  position: absolute; inset: -20% 0;   /* パララックスで動かす余白 */
+  will-change: transform;
+}
+.hero__img {
+  width: 100%; height: 100%; display: block; object-fit: cover;
+  opacity: 0; transform: scale(1.12);
+  animation: heroImgIn 1.3s cubic-bezier(.16, .84, .44, 1) forwards;
+}
+@keyframes heroImgIn { to { opacity: 1; transform: scale(1); } }
+
+/* 右上を少し暗くして白文字を読みやすく */
+.hero::after {
+  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(255deg, rgba(6, 26, 40, .58) 0%, rgba(6, 26, 40, .18) 45%, transparent 74%);
+}
+
+.hero__inner {
+  position: absolute; inset: 0; z-index: 2;
+  max-width: var(--maxw); margin: 0 auto;
+  padding: clamp(28px, 8vh, 70px) 22px 0;
+  display: flex; flex-direction: column; align-items: flex-end;
+  text-align: right;
+  will-change: transform, opacity;
+}
+.hero__welcome {
+  margin: 0; color: #fff;
+  font-family: var(--font-en); font-weight: 800; line-height: 1.22;
+  text-shadow: 0 6px 26px rgba(6, 26, 40, .45);
+}
+.hero__welcome span { display: block; opacity: 0; transform: translateX(26px); animation: heroTextIn .9s cubic-bezier(.16, .84, .44, 1) forwards; }
+.hero__welcome-lead {
+  font-size: clamp(.72rem, 2.2vw, 1rem); font-weight: 600;
+  letter-spacing: .16em; text-transform: uppercase; opacity: .92;
+  margin-bottom: .3em; animation-delay: .35s;
+}
+.hero__welcome-main {
+  font-size: clamp(1.5rem, 5vw, 2.7rem); letter-spacing: .01em;
+  animation-delay: .5s;
+}
+@keyframes heroTextIn { to { opacity: 1; transform: translateX(0); } }
+
+#listView { padding-top: 24px; }
+
 /* ---------- Pinned intro ---------- */
 .pinned {
   position: relative; overflow: hidden;
@@ -324,6 +377,9 @@ body {
   html { scroll-behavior: auto; }
   * { animation: none !important; transition: none !important; }
   .post-card { opacity: 1; transform: none; }
+  /* アニメ無効時に隠れたままにならないよう最終状態を出す */
+  .hero__img { opacity: 1 !important; transform: none !important; }
+  .hero__welcome span { opacity: 1 !important; transform: none !important; }
 }
 
 @media (max-width: 560px) {

@@ -77,6 +77,9 @@ const el = (id) => document.getElementById(id);
 
 const listView    = el("listView");
 const articleView = el("articleView");
+const hero        = el("hero");
+const heroMedia   = el("heroMedia");
+const heroInner   = el("heroInner");
 const feed        = el("feed");
 const feedEmpty   = el("feedEmpty");
 const feedTitle   = el("feedTitle");
@@ -266,12 +269,14 @@ function openArticle(id) {
 
   listView.hidden = true;
   articleView.hidden = false;
+  if (hero) hero.hidden = true; // ヒーローは一覧トップだけに出す
   window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
 }
 
 function showList() {
   articleView.hidden = true;
   listView.hidden = false;
+  if (hero) hero.hidden = false;
 }
 
 /* ----------------------- トップへ戻す ----------------------- */
@@ -407,6 +412,41 @@ function revealOnScroll() {
   cards.forEach((c) => io.observe(c));
 }
 
+/* ----------------------- ヒーローのスクロール演出（パララックス） ----------------------- */
+function initHero() {
+  if (!hero || !heroMedia) return;
+
+  // 写真が未設置・読み込み失敗のときは <img> を外して下地グラデだけにする
+  const heroImg = el("heroImg");
+  if (heroImg) {
+    heroImg.addEventListener("error", () => heroImg.remove());
+    if (heroImg.complete && heroImg.naturalWidth === 0) heroImg.remove();
+  }
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  let ticking = false;
+  const apply = () => {
+    ticking = false;
+    if (hero.hidden) return;
+    const h = hero.offsetHeight || 1;
+    const p = Math.min(Math.max(window.scrollY / h, 0), 1); // 0〜1
+    // 写真：下方向にゆっくり流しつつ、わずかに拡大
+    heroMedia.style.transform = `translate3d(0, ${p * 64}px, 0) scale(${1 + p * 0.06})`;
+    // 文字：上に抜けながらフェードアウト
+    if (heroInner) {
+      heroInner.style.transform = `translate3d(0, ${p * -34}px, 0)`;
+      heroInner.style.opacity = String(1 - p * 0.9);
+    }
+  };
+  const onScroll = () => {
+    if (!ticking) { ticking = true; requestAnimationFrame(apply); }
+  };
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll, { passive: true });
+  apply();
+}
+
 /* ----------------------- イベント ----------------------- */
 function bindGlobalEvents() {
   menuToggle.addEventListener("click", toggleDrawer);
@@ -428,6 +468,7 @@ function bindGlobalEvents() {
 /* ----------------------- 起動 ----------------------- */
 async function init() {
   bindGlobalEvents();
+  initHero();
   try {
     ALL_POSTS = await loadPosts();
     renderPinned();
