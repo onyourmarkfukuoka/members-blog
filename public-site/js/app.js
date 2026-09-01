@@ -423,21 +423,37 @@ function initHero() {
     if (heroImg.complete && heroImg.naturalWidth === 0) heroImg.remove();
   }
 
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  // --- Welcome テキスト：少しスクロールしたら出現（動きを抑える設定なら即表示） ---
+  const revealText = () => heroInner && heroInner.classList.add("is-in");
+  if (reduce) {
+    revealText();
+  } else {
+    let revealed = false;
+    const tryReveal = () => {
+      if (!revealed && window.scrollY > 40) {
+        revealed = true;
+        revealText();
+        window.removeEventListener("scroll", tryReveal);
+      }
+    };
+    window.addEventListener("scroll", tryReveal, { passive: true });
+    // スクロールしない人向けの保険（数秒たったら出す）
+    setTimeout(() => { if (!revealed) { revealed = true; revealText(); window.removeEventListener("scroll", tryReveal); } }, 3500);
+    tryReveal();
+  }
+
+  if (reduce) return;
+
+  // --- 写真パララックス：スクロールに合わせてゆっくり流す＋わずかに拡大 ---
   let ticking = false;
   const apply = () => {
     ticking = false;
     if (hero.hidden) return;
     const h = hero.offsetHeight || 1;
     const p = Math.min(Math.max(window.scrollY / h, 0), 1); // 0〜1
-    // 写真：下方向にゆっくり流しつつ、わずかに拡大
-    heroMedia.style.transform = `translate3d(0, ${p * 64}px, 0) scale(${1 + p * 0.06})`;
-    // 文字：上に抜けながらフェードアウト
-    if (heroInner) {
-      heroInner.style.transform = `translate3d(0, ${p * -34}px, 0)`;
-      heroInner.style.opacity = String(1 - p * 0.9);
-    }
+    heroMedia.style.transform = `translate3d(0, ${p * 56}px, 0) scale(${1 + p * 0.05})`;
   };
   const onScroll = () => {
     if (!ticking) { ticking = true; requestAnimationFrame(apply); }
