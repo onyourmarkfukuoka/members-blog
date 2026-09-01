@@ -48,6 +48,15 @@ const adminApp   = el("adminApp");
 const welcome    = el("welcome");
 const logoutBtn  = el("logoutBtn");
 
+const adminMain       = el("adminMain");
+const homeChoice      = el("homeChoice");
+const homeChoiceTitle = el("homeChoiceTitle");
+const chooseNewBtn    = el("chooseNew");
+const chooseEditBtn   = el("chooseEdit");
+const menuBtn         = el("menuBtn");
+const editorPanel     = el("editorPanel");
+const listPanel       = el("listPanel");
+
 const form         = el("postForm");
 const formTitle    = el("formTitle");
 const fTitle       = el("fTitle");
@@ -174,6 +183,37 @@ async function uploadPhoto(postId, file) {
   return await snap.ref.getDownloadURL();
 }
 
+/* ----------------------- 画面の切り替え ----------------------- */
+/* view: "home"（選択画面） | "new"（新規作成） | "edit"（既存の記事を編集） */
+function setView(view) {
+  adminMain.dataset.view = view;
+
+  homeChoice.hidden  = view !== "home";
+  menuBtn.hidden     = view === "home";
+  listPanel.hidden   = view !== "edit";
+  // 新規作成では最初からフォームを表示。編集では記事を選ぶまで隠す。
+  editorPanel.hidden = view === "home" || (view === "edit" && !editingId);
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function showHome() {
+  const name = (currentUser && (currentUser.displayName || currentUser.email)) || "スタッフ";
+  homeChoiceTitle.textContent = `${name}さん、何をしますか？`;
+  setView("home");
+}
+
+function startNew() {
+  resetForm();
+  setView("new");
+}
+
+function startEdit() {
+  resetForm();
+  setView("edit");
+  loadPosts(); // 最新の一覧に更新（自分の記事だけ）
+}
+
 /* ----------------------- フォーム操作 ----------------------- */
 function resetForm() {
   editingId = null;
@@ -197,6 +237,7 @@ function resetForm() {
 function fillForm(id, data) {
   editingId = id;
   editingSnapshot = data;
+  editorPanel.hidden = false; // 編集ビューで記事を選んだらフォームを表示
   fTitle.value  = data.title || "";
   fDate.value   = data.date || todayIso();
   fEditor.value = data.editorName || "";
@@ -347,7 +388,10 @@ async function deletePost(id, data) {
     await db.collection("posts").doc(id).delete();
 
     // 3) いま編集中の記事を消したらフォームを新規状態に戻す
-    if (editingId === id) resetForm();
+    if (editingId === id) {
+      resetForm();
+      if (adminMain.dataset.view === "edit") editorPanel.hidden = true;
+    }
 
     setFormStatus("削除しました。");
     await loadPosts();
@@ -365,10 +409,14 @@ async function loadPosts() {
     const snap = await db.collection("posts").orderBy("date", "desc").get();
 
     postList.innerHTML = "";
-    listEmpty.hidden = snap.size > 0;
+    let shown = 0;
 
     snap.forEach((doc) => {
       const p = doc.data();
+      // 自分（ログイン中のユーザー）が書いた記事だけを表示する
+      if (!currentUser || p.authorUid !== currentUser.uid) return;
+      shown += 1;
+
       const li = document.createElement("li");
       li.className = "post-list__item";
       li.dataset.id = doc.id;
@@ -406,6 +454,7 @@ async function loadPosts() {
       postList.appendChild(li);
     });
 
+    listEmpty.hidden = shown > 0;
     highlightSelected();
   } catch (err) {
     console.error("loadPosts error:", err);
@@ -444,7 +493,8 @@ auth.onAuthStateChanged(
     adminApp.hidden = false;
 
     resetForm();
-    loadPosts();
+    loadPosts();      // 一覧は裏で用意しておく（自分の記事だけ）
+    showHome();       // まずは「新規作成 / 既存を編集」の選択画面を出す
   },
   (err) => {
     // 認証状態の取得自体に失敗したときも、確認中表示のまま固まらせない
@@ -466,7 +516,10 @@ setTimeout(() => {
 }, 8000);
 
 /* ----------------------- イベント ----------------------- */
-newPostBtn.addEventListener("click", resetForm);
+chooseNewBtn.addEventListener("click", startNew);
+chooseEditBtn.addEventListener("click", startEdit);
+menuBtn.addEventListener("click", showHome);
+newPostBtn.addEventListener("click", startNew);
 saveDraftBtn.addEventListener("click", () => save("draft"));
 publishBtn.addEventListener("click", () => save("published"));
 

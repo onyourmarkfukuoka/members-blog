@@ -35,15 +35,33 @@
       </a>
 
       <div class="admin-header__user">
+        <button class="btn-ghost" id="menuBtn" type="button" hidden>← メニュー</button>
         <span class="welcome" id="welcome"></span>
         <button class="btn-ghost" id="logoutBtn" type="button">ログアウト</button>
       </div>
     </header>
 
-    <main class="admin-main">
+    <main class="admin-main" id="adminMain">
+
+      <!-- ===== 最初の選択画面 ===== -->
+      <section class="home-choice" id="homeChoice" hidden>
+        <h1 class="home-choice__title" id="homeChoiceTitle">何をしますか？</h1>
+        <div class="home-choice__grid">
+          <button class="choice-card" id="chooseNew" type="button">
+            <span class="choice-card__icon" aria-hidden="true">＋</span>
+            <span class="choice-card__label">新しい記事を作成</span>
+            <span class="choice-card__desc">白紙から記事を書きます</span>
+          </button>
+          <button class="choice-card" id="chooseEdit" type="button">
+            <span class="choice-card__icon" aria-hidden="true">✎</span>
+            <span class="choice-card__label">既存の記事を編集</span>
+            <span class="choice-card__desc">自分が書いた記事を選んで直します</span>
+          </button>
+        </div>
+      </section>
 
       <!-- ===== 編集フォーム ===== -->
-      <section class="editor-panel">
+      <section class="editor-panel" id="editorPanel" hidden>
         <div class="editor-panel__head">
           <h1 class="editor-panel__title" id="formTitle">新しい記事</h1>
           <button class="btn-ghost" id="newPostBtn" type="button">＋ 新規作成</button>
@@ -105,10 +123,10 @@
         </form>
       </section>
 
-      <!-- ===== 記事一覧 ===== -->
-      <section class="list-panel">
-        <h2 class="list-panel__title">記事・下書き一覧</h2>
-        <p class="list-panel__empty" id="listEmpty" hidden>まだ記事がありません。</p>
+      <!-- ===== 記事一覧（自分が書いた記事） ===== -->
+      <section class="list-panel" id="listPanel" hidden>
+        <h2 class="list-panel__title">自分が書いた記事</h2>
+        <p class="list-panel__empty" id="listEmpty" hidden>あなたが書いた記事はまだありません。</p>
         <ul class="post-list" id="postList"><!-- editor.js が入れます --></ul>
       </section>
 
