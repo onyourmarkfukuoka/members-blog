@@ -290,13 +290,13 @@ body {
 /* 1枚：中央寄せ。縦長でも画面いっぱいに伸ばさない */
 .article__photos.count-1 { justify-items: center; }
 .article__photos.count-1 img {
-  width: auto; max-height: 70vh; object-fit: contain;
+  width: auto; max-width: 520px; max-height: 56vh; object-fit: contain;
 }
 
 /* 2枚：横並び。高さを揃えてトリミング表示 */
 .article__photos.count-2 { grid-template-columns: 1fr 1fr; }
 .article__photos.count-2 img {
-  aspect-ratio: 4 / 3; max-height: 60vh; object-fit: cover;
+  aspect-ratio: 4 / 3; max-height: 42vh; object-fit: cover;
 }
 .article__body { font-size: 1.02rem; color: #1c3a50; }
 .article__body p { margin: 0 0 1.3em; }
@@ -329,8 +329,8 @@ body {
 @media (max-width: 560px) {
   /* スマホ：2枚でも縦積みにして各写真が大きくなりすぎないよう抑える */
   .article__photos.count-2 { grid-template-columns: 1fr; }
-  .article__photos.count-2 img { aspect-ratio: 3 / 2; max-height: 52vh; }
-  .article__photos.count-1 img { max-height: 60vh; }
+  .article__photos.count-2 img { aspect-ratio: 3 / 2; max-height: 44vh; }
+  .article__photos.count-1 img { max-width: 100%; max-height: 48vh; }
 }
 
 @media (max-width: 460px) {
