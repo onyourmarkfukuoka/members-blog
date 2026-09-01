@@ -249,7 +249,7 @@ function openArticle(id) {
   const photos = el("articlePhotos");
   photos.innerHTML = "";
   const pics = (p.photos || []).slice(0, 2); // 写真は最大2枚
-  photos.className = "article__photos" + (pics.length === 2 ? " count-2" : "");
+  photos.className = "article__photos" + (pics.length === 2 ? " count-2" : pics.length === 1 ? " count-1" : "");
   pics.forEach((src) => {
     const img = document.createElement("img");
     img.src = src; img.alt = p.title; img.loading = "lazy";
