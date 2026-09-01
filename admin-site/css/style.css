@@ -309,6 +309,7 @@ body {
 .list-panel__empty { color: var(--ink-soft); font-size: .86rem; margin: 0; }
 
 .post-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.post-list.is-busy { pointer-events: none; opacity: .6; }
 .post-list__item { border-radius: 14px; }
 .post-list__pick {
   width: 100%; text-align: left; font: inherit; color: inherit;
@@ -334,6 +335,19 @@ body {
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .post-list__editor { font-size: .76rem; color: var(--ink-soft); }
+
+.post-list__actions {
+  display: flex; gap: 8px; margin-top: 8px;
+}
+.post-list__act {
+  flex: 1; font: inherit; font-family: var(--font-jp); font-weight: 700; font-size: .78rem;
+  padding: 7px 10px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--paper); color: var(--ink);
+  transition: border-color .18s ease, background .18s ease, color .18s ease;
+}
+.post-list__act--edit:hover { border-color: rgba(82,182,232,.45); background: var(--water); }
+.post-list__act--del { color: #B23B3B; }
+.post-list__act--del:hover { border-color: rgba(178,59,59,.5); background: rgba(178,59,59,.08); }
 .post-list__cat {
   font-family: var(--font-jp); font-size: .64rem; font-weight: 700;
   color: var(--sky-deep); background: var(--water);

@@ -102,6 +102,7 @@ function setBusy(busy) {
   newPostBtn.disabled = busy;
   photoInput.disabled = busy;
   photoUploader.classList.toggle("is-busy", busy);
+  postList.classList.toggle("is-busy", busy); // 保存・削除中は一覧の操作を止める
 }
 
 /* ----------------------- 写真スロット ----------------------- */
@@ -324,6 +325,40 @@ async function save(status) {
   }
 }
 
+/* ----------------------- 削除（下書き・公開済みどちらも） ----------------------- */
+async function deletePost(id, data) {
+  const label = data && data.title ? `「${data.title}」` : "この記事";
+  const pubNote = data && data.status === "published" ? "\n※ 公開中の記事です。公開サイトからも消えます。" : "";
+  if (!window.confirm(`${label}を削除します。元に戻せません。${pubNote}\n\n削除してよろしいですか？`)) return;
+
+  setBusy(true);
+  setFormStatus("削除しています…");
+  try {
+    // 1) 添付写真を Storage から消す（失敗しても続行）
+    for (const url of (data && data.photos) || []) {
+      try {
+        await storage.refFromURL(url).delete();
+      } catch (e) {
+        console.warn("写真の削除に失敗（無視して続行）:", e);
+      }
+    }
+
+    // 2) Firestore ドキュメントを削除
+    await db.collection("posts").doc(id).delete();
+
+    // 3) いま編集中の記事を消したらフォームを新規状態に戻す
+    if (editingId === id) resetForm();
+
+    setFormStatus("削除しました。");
+    await loadPosts();
+  } catch (err) {
+    console.error("deletePost error:", err);
+    setFormStatus("削除に失敗しました。通信状況や権限を確認してもう一度お試しください。", true);
+  } finally {
+    setBusy(false);
+  }
+}
+
 /* ----------------------- 一覧の読み込み ----------------------- */
 async function loadPosts() {
   try {
@@ -350,7 +385,11 @@ async function loadPosts() {
           </span>
           <span class="post-list__title"></span>
           <span class="post-list__editor"></span>
-        </button>`;
+        </button>
+        <div class="post-list__actions">
+          <button class="post-list__act post-list__act--edit" type="button">編集</button>
+          <button class="post-list__act post-list__act--del" type="button">削除</button>
+        </div>`;
 
       // category が無い既存記事は「その他」表示
       li.querySelector(".post-list__cat").textContent =
@@ -359,7 +398,11 @@ async function loadPosts() {
       li.querySelector(".post-list__title").textContent = p.title || "(タイトルなし)";
       li.querySelector(".post-list__editor").textContent = p.editorName ? `編集：${p.editorName}` : "";
 
+      // カード本体クリック／「編集」ボタン＝フォームに読み込んで編集
       li.querySelector(".post-list__pick").addEventListener("click", () => fillForm(doc.id, p));
+      li.querySelector(".post-list__act--edit").addEventListener("click", () => fillForm(doc.id, p));
+      // 「削除」ボタン＝公開済みでも記事を削除
+      li.querySelector(".post-list__act--del").addEventListener("click", () => deletePost(doc.id, p));
       postList.appendChild(li);
     });
 
