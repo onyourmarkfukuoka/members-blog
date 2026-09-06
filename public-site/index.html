@@ -32,20 +32,15 @@
     </button>
   </header>
 
-  <!-- ===== Year drawer (ふわっと) ===== -->
+  <!-- ===== Year drawer (右からスライドインするサイドパネル) ===== -->
   <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
   <nav class="year-drawer" id="yearDrawer" aria-label="年別アーカイブ" hidden>
-    <!-- Step 1: 年をえらぶ -->
-    <div class="drawer-step" id="yearStep">
+    <div class="year-drawer__head">
       <p class="year-drawer__label">年別アーカイブ</p>
-      <ul class="year-list" id="yearList"><!-- filled by app.js --></ul>
+      <button class="drawer-close" id="drawerClose" type="button" aria-label="メニューを閉じる">&times;</button>
     </div>
-    <!-- Step 2: カテゴリをえらぶ -->
-    <div class="drawer-step" id="catStep" hidden>
-      <button class="drawer-back" id="catBack" type="button">← 年をえらび直す</button>
-      <p class="year-drawer__label" id="catStepLabel">カテゴリをえらぶ</p>
-      <ul class="year-list" id="catList"><!-- filled by app.js --></ul>
-    </div>
+    <!-- 年 → カテゴリのアコーディオン。中身は app.js が組み立てます -->
+    <ul class="year-list" id="yearList"><!-- filled by app.js --></ul>
   </nav>
 
   <!-- ===== Hero（記事一覧トップだけに出す横長ビジュアル） ===== -->

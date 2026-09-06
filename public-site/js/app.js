@@ -69,8 +69,6 @@ let ALL_POSTS = [];
 const PAGE_SIZE = 5;
 // いま表示している絞り込み条件とページ番号
 let view = { year: null, category: null, page: 1 };
-// カテゴリ選択ステップで「どの年を選んだか」を一時的に覚えておく
-let pendingYear = null;
 
 /* ----------------------- 要素 ----------------------- */
 const el = (id) => document.getElementById(id);
@@ -87,16 +85,12 @@ const feedReset   = el("feedReset");
 const pagination  = el("pagination");
 const pinnedArea  = el("pinnedArea");
 
-const yearStep     = el("yearStep");
 const yearList     = el("yearList");
-const catStep      = el("catStep");
-const catList      = el("catList");
-const catBack      = el("catBack");
-const catStepLabel = el("catStepLabel");
 
 const menuToggle    = el("menuToggle");
 const yearDrawer    = el("yearDrawer");
 const drawerBackdrop= el("drawerBackdrop");
+const drawerClose   = el("drawerClose");
 
 /* ----------------------- 便利関数 ----------------------- */
 function formatDate(iso) {
@@ -297,7 +291,7 @@ function applyView(year, category) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-/* ----------------------- ドロワー：年ステップ ----------------------- */
+/* ----------------------- ドロワー：年→カテゴリ（アコーディオン） ----------------------- */
 function renderYearList() {
   const normals = sortedNormalPosts(ALL_POSTS);
   const years = [...new Set(normals.map((p) => yearOf(p.date)))].sort((a, b) => b - a);
@@ -308,70 +302,80 @@ function renderYearList() {
 
   yearList.innerHTML = "";
 
-  const makeItem = (label, count, onClick) => {
-    const li = document.createElement("li");
-    const btn = document.createElement("button");
-    btn.innerHTML = `<span></span><span class="count">${count}</span>`;
-    btn.querySelector("span").textContent = label;
-    btn.addEventListener("click", onClick);
-    li.appendChild(btn);
-    return li;
-  };
+  // 「すべて」= 全カテゴリ・全年（トップと同じ）。アコーディオンなしの単独ボタン。
+  const allLi = document.createElement("li");
+  const allBtn = document.createElement("button");
+  allBtn.type = "button";
+  allBtn.className = "year-list__all";
+  allBtn.innerHTML = `<span></span><span class="count">${normals.length}</span>`;
+  allBtn.querySelector("span").textContent = "すべて";
+  allBtn.addEventListener("click", () => { goHome(); closeDrawer(); });
+  allLi.appendChild(allBtn);
+  yearList.appendChild(allLi);
 
-  // 「すべて」= 全カテゴリ・全年（トップと同じ）
-  yearList.appendChild(makeItem("すべて", normals.length, () => {
-    goHome();
-    closeDrawer();
-  }));
-
-  // 年をえらぶと、次のステップ（カテゴリ）へ
+  // 年ごと：押すとその場でカテゴリを展開（アコーディオン、同時に開くのは1つ）
   years.forEach((y) => {
-    const count = normals.filter((p) => yearOf(p.date) === y).length;
-    yearList.appendChild(makeItem(`${y}`, count, () => openCategoryStep(y)));
-  });
-}
+    const yearPosts = normals.filter((p) => yearOf(p.date) === y);
 
-/* ----------------------- ドロワー：カテゴリステップ ----------------------- */
-function openCategoryStep(year) {
-  pendingYear = year;
-  catStepLabel.textContent = `${year}年 ・ カテゴリをえらぶ`;
-
-  const yearPosts = sortedNormalPosts(ALL_POSTS).filter((p) => yearOf(p.date) === year);
-  catList.innerHTML = "";
-
-  const makeItem = (label, count, category) => {
     const li = document.createElement("li");
-    const btn = document.createElement("button");
-    btn.innerHTML = `<span></span><span class="count">${count}</span>`;
-    btn.querySelector("span").textContent = label;
-    btn.addEventListener("click", () => {
-      applyView(year, category);
-      closeDrawer();
+    li.className = "year-item";
+
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "year-item__toggle";
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.innerHTML = `<span></span><span class="count">${yearPosts.length}</span>`;
+    toggle.querySelector("span").textContent = `${y}`;
+    toggle.addEventListener("click", () => toggleYearItem(li));
+
+    const panel = document.createElement("div");
+    panel.className = "year-item__panel";
+    const inner = document.createElement("div");
+    inner.className = "year-item__panel-inner";
+    const cats = document.createElement("ul");
+    cats.className = "cat-list";
+
+    const makeCat = (label, count, category) => {
+      const cli = document.createElement("li");
+      const cb = document.createElement("button");
+      cb.type = "button";
+      cb.innerHTML = `<span></span><span class="count">${count}</span>`;
+      cb.querySelector("span").textContent = label;
+      cb.addEventListener("click", () => { applyView(y, category); closeDrawer(); });
+      cli.appendChild(cb);
+      return cli;
+    };
+
+    cats.appendChild(makeCat("すべて", yearPosts.length, null));
+    CATEGORIES.forEach((c) => {
+      const count = yearPosts.filter((p) => categoryOf(p) === c.key).length;
+      cats.appendChild(makeCat(c.label, count, c.key));
     });
-    li.appendChild(btn);
-    return li;
-  };
 
-  // その年の全カテゴリ
-  catList.appendChild(makeItem("すべて", yearPosts.length, null));
-  // カテゴリごと
-  CATEGORIES.forEach((c) => {
-    const count = yearPosts.filter((p) => categoryOf(p) === c.key).length;
-    catList.appendChild(makeItem(c.label, count, c.key));
+    inner.appendChild(cats);
+    panel.appendChild(inner);
+    li.append(toggle, panel);
+    yearList.appendChild(li);
   });
-
-  yearStep.hidden = true;
-  catStep.hidden = false;
 }
 
-function backToYearStep() {
-  catStep.hidden = true;
-  yearStep.hidden = false;
+// アコーディオン開閉。開くのは同時に1つだけ。
+function toggleYearItem(li) {
+  const willOpen = !li.classList.contains("is-open");
+  collapseAllYearItems(li);
+  li.classList.toggle("is-open", willOpen);
+  li.querySelector(".year-item__toggle").setAttribute("aria-expanded", String(willOpen));
+}
+function collapseAllYearItems(except) {
+  yearList.querySelectorAll(".year-item.is-open").forEach((li) => {
+    if (li === except) return;
+    li.classList.remove("is-open");
+    li.querySelector(".year-item__toggle").setAttribute("aria-expanded", "false");
+  });
 }
 
 /* ----------------------- ドロワー開閉 ----------------------- */
 function openDrawer() {
-  backToYearStep(); // 開くときは必ず年ステップから
   yearDrawer.hidden = false;
   drawerBackdrop.hidden = false;
   requestAnimationFrame(() => {
@@ -387,7 +391,7 @@ function closeDrawer() {
   setTimeout(() => {
     yearDrawer.hidden = true;
     drawerBackdrop.hidden = true;
-    backToYearStep();
+    collapseAllYearItems(); // 次に開くときはすべて閉じた状態から
   }, 340);
 }
 function toggleDrawer() {
@@ -467,7 +471,7 @@ function initHero() {
 function bindGlobalEvents() {
   menuToggle.addEventListener("click", toggleDrawer);
   drawerBackdrop.addEventListener("click", closeDrawer);
-  catBack.addEventListener("click", backToYearStep);
+  drawerClose.addEventListener("click", closeDrawer);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
 
   feedReset.addEventListener("click", goHome);
