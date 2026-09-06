@@ -33,6 +33,11 @@ html { scroll-behavior: smooth; }
 
 body {
   margin: 0;
+  /* スティッキーフッター：縦フレックスで main を伸ばし、footer を最下部へ */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
   font-family: var(--font-jp);
   color: var(--ink);
   background:
@@ -41,15 +46,20 @@ body {
   background-attachment: fixed;
   line-height: 1.85;
   -webkit-font-smoothing: antialiased;
-  /* 画面下に固定したフッターの下に本文が隠れないよう余白を確保 */
-  padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
 }
+
+/* コンテンツ領域を伸ばして、短いページでもフッターを画面最下部に落とす。
+   listView / articleView は片方が [hidden]（display:none）なので、
+   表示中の一方だけが余白を吸収する。 */
+#listView,
+#articleView { flex: 1 0 auto; }
 
 .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 22px; }
 
 /* ---------- Header ---------- */
 .site-header {
   position: sticky; top: 0; z-index: 40;
+  flex: none;
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px;
   padding: 14px 22px;
@@ -181,6 +191,7 @@ body {
 /* ---------- Hero（横長ビジュアル＋スクロール演出） ---------- */
 .hero {
   position: relative;
+  flex: none;
   height: clamp(300px, 58vh, 640px);
   overflow: hidden;
   border-bottom: 1px solid var(--line);
@@ -400,10 +411,10 @@ body {
 .article__body { font-size: 1.02rem; color: #1c3a50; }
 .article__body p { margin: 0 0 1.3em; }
 
-/* ---------- Footer（画面下に固定） ---------- */
+/* ---------- Footer（スティッキーフッター：ページ最下部に配置） ---------- */
 .site-footer {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
-  padding: 12px 22px calc(12px + env(safe-area-inset-bottom, 0px));
+  flex: none;
+  padding: 18px 22px calc(18px + env(safe-area-inset-bottom, 0px));
   text-align: center;
   background: var(--water);
   border-top: 1px solid var(--line);
