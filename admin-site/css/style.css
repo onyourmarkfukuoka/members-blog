@@ -67,6 +67,23 @@ body {
 
 :focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; border-radius: 6px; }
 
+/* ===== 日英併記：英語は補助的に小さく・薄く ===== */
+.en,
+.en-b {
+  font-family: var(--font-en);
+  font-weight: 400;
+  font-size: .82em;
+  color: var(--ink-soft);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.en-b { display: block; margin-top: 3px; line-height: 1.4; }
+/* ボタン内の英語は行間を詰めて縦積みに */
+.btn .en-b,
+.btn-ghost .en-b,
+.btn-google .en-b,
+.choice-card__label .en-b { margin-top: 1px; }
+
 /* =========================================================
    ログインページ
    ========================================================= */
@@ -153,10 +170,10 @@ body {
   -webkit-backdrop-filter: saturate(160%) blur(14px);
   border-bottom: 1px solid var(--line);
 }
-.admin-header__user { display: flex; align-items: center; gap: 12px; }
+.admin-header__user { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 8px 12px; }
 .welcome {
-  font-family: var(--font-jp); font-weight: 700; font-size: .92rem;
-  color: var(--ink);
+  font-family: var(--font-jp); font-weight: 700; font-size: .88rem;
+  line-height: 1.35; color: var(--ink);
 }
 
 .btn-ghost {

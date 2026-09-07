@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>On Your Mark! Staff Blog Edit — ログイン</title>
+  <title>On Your Mark! Staff Blog Edit — ログイン / Login</title>
   <meta name="robots" content="noindex" />
 
   <!-- Fonts（公開サイトと同じ） -->
@@ -20,9 +20,12 @@
       <img src="images/logo.svg" alt="On Your Mark! ロゴ" />
     </span>
 
-    <p class="auth-card__kicker">Staff only</p>
+    <p class="auth-card__kicker">スタッフ専用 / Staff only</p>
     <h1 class="auth-card__title">On Your Mark!<br />Staff Blog Edit</h1>
-    <p class="auth-card__lead">記事の作成・編集はスタッフ専用です。<br />Googleアカウントでログインしてください。</p>
+    <p class="auth-card__lead">
+      記事の作成・編集はスタッフ専用です。Googleアカウントでログインしてください。
+      <span class="en-b">Creating and editing posts is for staff only. Please sign in with your Google account.</span>
+    </p>
 
     <button class="btn-google" id="googleLoginBtn" type="button">
       <span class="btn-google__icon" aria-hidden="true">
@@ -33,12 +36,12 @@
           <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.46 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.94l3.02 2.34C4.68 5.16 6.66 3.58 9 3.58z"/>
         </svg>
       </span>
-      Googleでログイン
+      <span>Googleでログイン<span class="en-b">Sign in with Google</span></span>
     </button>
 
     <p class="auth-card__msg" id="authMsg" role="status" aria-live="polite"></p>
 
-    <a class="auth-card__back" href="../public-site/index.html">← 公開サイトへもどる</a>
+    <a class="auth-card__back" href="../public-site/index.html">← 公開サイトへもどる / Back to blog</a>
   </main>
 
   <!-- ===== Scripts (external only) =====

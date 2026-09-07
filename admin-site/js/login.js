@@ -49,7 +49,7 @@ auth
   })
   .catch((err) => {
     console.error("getRedirectResult error:", err);
-    setMsg("ログインに戻れませんでした。もう一度お試しください。", true);
+    setMsg("ログインに戻れませんでした。もう一度お試しください。 / Could not return from sign-in. Please try again.", true);
   });
 
 /* -----------------------------------------------------------
@@ -58,7 +58,7 @@ auth
 ----------------------------------------------------------- */
 async function signIn() {
   loginBtn.disabled = true;
-  setMsg("ログイン画面をひらいています…");
+  setMsg("ログイン画面をひらいています… / Opening the sign-in window…");
 
   try {
     await auth.signInWithPopup(googleProvider);
@@ -74,16 +74,16 @@ async function signIn() {
     ];
 
     if (fallbackCodes.includes(err.code)) {
-      setMsg("別画面でのログインに切り替えます…");
+      setMsg("別画面でのログインに切り替えます… / Switching to a full-page sign-in…");
       try {
         await auth.signInWithRedirect(googleProvider);
         return; // ページ遷移するのでここで終わり
       } catch (err2) {
         console.error("signInWithRedirect error:", err2);
-        setMsg("ログインを開始できませんでした。時間をおいて再度お試しください。", true);
+        setMsg("ログインを開始できませんでした。時間をおいて再度お試しください。 / Could not start sign-in. Please try again later.", true);
       }
     } else {
-      setMsg("ログインに失敗しました。もう一度お試しください。", true);
+      setMsg("ログインに失敗しました。もう一度お試しください。 / Sign-in failed. Please try again.", true);
     }
     loginBtn.disabled = false;
   }

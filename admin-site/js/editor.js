@@ -29,15 +29,15 @@ const MAX_PHOTOS = 2; // 写真は最大2枚まで
 
 /* カテゴリ：値（Firestore） と 表示名 の対応。初期値は "other"（その他）。 */
 const CATEGORIES = [
-  { key: "camp",    label: "キャンプ当日" },
-  { key: "meeting", label: "ミーティング" },
-  { key: "other",   label: "その他" }
+  { key: "camp",    label: "キャンプ当日 / Camp day" },
+  { key: "meeting", label: "ミーティング / Meeting" },
+  { key: "other",   label: "その他 / Other" }
 ];
 const CATEGORY_KEYS = CATEGORIES.map((c) => c.key);
 const DEFAULT_CATEGORY = "other";
 const categoryLabel = (key) => {
   const found = CATEGORIES.find((c) => c.key === key);
-  return found ? found.label : "その他";
+  return found ? found.label : "その他 / Other";
 };
 
 const el = (id) => document.getElementById(id);
@@ -127,12 +127,12 @@ function renderPhotos() {
 
     const img = document.createElement("img");
     img.src = slot.kind === "existing" ? slot.url : slot.previewUrl;
-    img.alt = `写真 ${i + 1}`;
+    img.alt = `写真 ${i + 1} / Photo ${i + 1}`;
 
     const del = document.createElement("button");
     del.type = "button";
     del.className = "photo-item__del";
-    del.setAttribute("aria-label", `写真 ${i + 1} を削除`);
+    del.setAttribute("aria-label", `写真 ${i + 1} を削除 / Remove photo ${i + 1}`);
     del.textContent = "×";
     del.addEventListener("click", () => removePhoto(i));
 
@@ -143,8 +143,8 @@ function renderPhotos() {
   photoAddLabel.hidden = photoSlots.length >= MAX_PHOTOS;
   photoHint.textContent =
     photoSlots.length >= MAX_PHOTOS
-      ? "写真は最大2枚です。差し替えるには、どれか削除してください。"
-      : "JPEG / PNG など。保存・公開したときにアップロードされます。";
+      ? "写真は最大2枚です。差し替えるには、どれか削除してください。 / Up to 2 photos. Delete one to swap it out."
+      : "JPEG / PNG など。保存・公開したときにアップロードされます。 / JPEG / PNG, etc. Uploaded when you save or publish.";
 }
 
 function addFiles(fileList) {
@@ -152,11 +152,11 @@ function addFiles(fileList) {
   let added = 0;
   for (const file of files) {
     if (photoSlots.length >= MAX_PHOTOS) {
-      setFormStatus("写真は最大2枚までです。", true);
+      setFormStatus("写真は最大2枚までです。 / You can add up to 2 photos.", true);
       break;
     }
     if (!file.type || !file.type.startsWith("image/")) {
-      setFormStatus("画像ファイルを選んでください。", true);
+      setFormStatus("画像ファイルを選んでください。 / Please choose an image file.", true);
       continue;
     }
     photoSlots.push({ kind: "new", file, previewUrl: URL.createObjectURL(file) });
@@ -199,7 +199,7 @@ function setView(view) {
 
 function showHome() {
   const name = (currentUser && (currentUser.displayName || currentUser.email)) || "スタッフ";
-  homeChoiceTitle.textContent = `${name}さん、何をしますか？`;
+  homeChoiceTitle.textContent = `${name}さん、何をしますか？ / Hi ${name}, what would you like to do?`;
   setView("home");
 }
 
@@ -228,7 +228,7 @@ function resetForm() {
   removedPhotoUrls = [];
   renderPhotos();
 
-  formTitle.textContent = "新しい記事";
+  formTitle.textContent = "新しい記事 / New post";
   editingHint.hidden = true;
   setFormStatus("");
   highlightSelected();
@@ -252,12 +252,12 @@ function fillForm(id, data) {
   removedPhotoUrls = [];
   renderPhotos();
 
-  formTitle.textContent = "記事を編集";
+  formTitle.textContent = "記事を編集 / Edit post";
   editingHint.hidden = false;
   editingHint.textContent =
     data.status === "published"
-      ? "この記事は現在【公開中】です。保存すると内容が更新されます。"
-      : "この記事は【下書き】です。「公開」を押すと公開サイトに出ます。";
+      ? "この記事は現在【公開中】です。保存すると内容が更新されます。 / This post is currently LIVE. Saving updates it right away."
+      : "この記事は【下書き】です。「公開」を押すと公開サイトに出ます。 / This post is a DRAFT. Press Publish to make it live on the blog.";
   setFormStatus("");
   highlightSelected();
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -274,11 +274,11 @@ function readForm() {
 }
 
 function validate(v) {
-  if (!v.title) return "タイトルを入力してください。";
-  if (!v.date) return "日付を選んでください。";
-  if (!v.editorName) return "編集者名を入力してください。";
-  if (!CATEGORY_KEYS.includes(v.category)) return "カテゴリを選んでください。";
-  if (!v.body) return "本文を入力してください。";
+  if (!v.title) return "タイトルを入力してください。 / Please enter a title.";
+  if (!v.date) return "日付を選んでください。 / Please choose a date.";
+  if (!v.editorName) return "編集者名を入力してください。 / Please enter an editor name.";
+  if (!CATEGORY_KEYS.includes(v.category)) return "カテゴリを選んでください。 / Please choose a category.";
+  if (!v.body) return "本文を入力してください。 / Please enter the body text.";
   return null;
 }
 
@@ -302,7 +302,7 @@ async function save(status) {
       if (slot.kind === "existing") {
         photos.push(slot.url);
       } else {
-        setFormStatus(`写真をアップロードしています…（${photos.length + 1}枚目）`);
+        setFormStatus(`写真をアップロードしています…（${photos.length + 1}枚目） / Uploading photo ${photos.length + 1}…`);
         photos.push(await uploadPhoto(postId, slot.file));
       }
     }
@@ -317,7 +317,9 @@ async function save(status) {
       }
     }
 
-    setFormStatus(status === "published" ? "公開しています…" : "保存しています…");
+    setFormStatus(status === "published"
+      ? "公開しています… / Publishing…"
+      : "保存しています… / Saving…");
 
     // 3) ドキュメント本体を保存
     const payload = {
@@ -352,15 +354,17 @@ async function save(status) {
     renderPhotos();
 
     setFormStatus(
-      status === "published" ? "公開しました。公開サイトに反映されます。" : "下書きとして保存しました。"
+      status === "published"
+        ? "公開しました。公開サイトに反映されます。 / Published. It will appear on the blog."
+        : "下書きとして保存しました。 / Saved as a draft."
     );
-    formTitle.textContent = "記事を編集";
+    formTitle.textContent = "記事を編集 / Edit post";
     editingHint.hidden = false;
     // 一覧を読み直す（onSnapshot にしていないので手動で）
     await loadPosts();
   } catch (err) {
     console.error("save error:", err);
-    setFormStatus("保存に失敗しました。通信状況を確認してもう一度お試しください。", true);
+    setFormStatus("保存に失敗しました。通信状況を確認してもう一度お試しください。 / Save failed. Check your connection and try again.", true);
   } finally {
     setBusy(false);
   }
@@ -369,11 +373,17 @@ async function save(status) {
 /* ----------------------- 削除（下書き・公開済みどちらも） ----------------------- */
 async function deletePost(id, data) {
   const label = data && data.title ? `「${data.title}」` : "この記事";
-  const pubNote = data && data.status === "published" ? "\n※ 公開中の記事です。公開サイトからも消えます。" : "";
-  if (!window.confirm(`${label}を削除します。元に戻せません。${pubNote}\n\n削除してよろしいですか？`)) return;
+  const labelEn = data && data.title ? `"${data.title}"` : "this post";
+  const pubNote = data && data.status === "published"
+    ? "\n※ 公開中の記事です。公開サイトからも消えます。\n* This post is live and will also disappear from the blog."
+    : "";
+  if (!window.confirm(
+        `${label}を削除します。元に戻せません。${pubNote}\n\n削除してよろしいですか？\n\n`
+        + `Delete ${labelEn}? This cannot be undone. Are you sure?`
+      )) return;
 
   setBusy(true);
-  setFormStatus("削除しています…");
+  setFormStatus("削除しています… / Deleting…");
   try {
     // 1) 添付写真を Storage から消す（失敗しても続行）
     for (const url of (data && data.photos) || []) {
@@ -393,11 +403,11 @@ async function deletePost(id, data) {
       if (adminMain.dataset.view === "edit") editorPanel.hidden = true;
     }
 
-    setFormStatus("削除しました。");
+    setFormStatus("削除しました。 / Deleted.");
     await loadPosts();
   } catch (err) {
     console.error("deletePost error:", err);
-    setFormStatus("削除に失敗しました。通信状況や権限を確認してもう一度お試しください。", true);
+    setFormStatus("削除に失敗しました。通信状況や権限を確認してもう一度お試しください。 / Delete failed. Check your connection and permissions, then try again.", true);
   } finally {
     setBusy(false);
   }
@@ -422,7 +432,7 @@ async function loadPosts() {
       li.dataset.id = doc.id;
 
       const badgeClass = p.status === "published" ? "badge--pub" : "badge--draft";
-      const badgeText = p.status === "published" ? "公開中" : "下書き";
+      const badgeText = p.status === "published" ? "公開中 / Live" : "下書き / Draft";
 
       li.innerHTML = `
         <button class="post-list__pick" type="button">
@@ -435,16 +445,16 @@ async function loadPosts() {
           <span class="post-list__editor"></span>
         </button>
         <div class="post-list__actions">
-          <button class="post-list__act post-list__act--edit" type="button">編集</button>
-          <button class="post-list__act post-list__act--del" type="button">削除</button>
+          <button class="post-list__act post-list__act--edit" type="button">編集 / Edit</button>
+          <button class="post-list__act post-list__act--del" type="button">削除 / Delete</button>
         </div>`;
 
       // category が無い既存記事は「その他」表示
       li.querySelector(".post-list__cat").textContent =
         categoryLabel(CATEGORY_KEYS.includes(p.category) ? p.category : DEFAULT_CATEGORY);
       li.querySelector(".post-list__date").textContent = formatDate(p.date);
-      li.querySelector(".post-list__title").textContent = p.title || "(タイトルなし)";
-      li.querySelector(".post-list__editor").textContent = p.editorName ? `編集：${p.editorName}` : "";
+      li.querySelector(".post-list__title").textContent = p.title || "(タイトルなし) / (untitled)";
+      li.querySelector(".post-list__editor").textContent = p.editorName ? `編集 / Editor：${p.editorName}` : "";
 
       // カード本体クリック／「編集」ボタン＝フォームに読み込んで編集
       li.querySelector(".post-list__pick").addEventListener("click", () => fillForm(doc.id, p));
@@ -459,7 +469,7 @@ async function loadPosts() {
   } catch (err) {
     console.error("loadPosts error:", err);
     listEmpty.hidden = false;
-    listEmpty.textContent = "一覧を読み込めませんでした。";
+    listEmpty.textContent = "一覧を読み込めませんでした。 / Could not load the list.";
   }
 }
 
@@ -487,7 +497,7 @@ auth.onAuthStateChanged(
     // --- 認証OK。まず「確認しています…」の表示を消す ---
     currentUser = user;
     const name = user.displayName || user.email || "スタッフ";
-    welcome.textContent = `${name}さん ようこそ!`;
+    welcome.textContent = `${name}さん ようこそ！ / Welcome, ${name}!`;
 
     authGate.hidden = true;
     adminApp.hidden = false;
@@ -502,7 +512,8 @@ auth.onAuthStateChanged(
     console.error("onAuthStateChanged error:", err);
     authGate.hidden = false;
     authGate.innerHTML =
-      'ログイン状態を確認できませんでした。<a href="login.html">ログインページへ</a>';
+      'ログイン状態を確認できませんでした。<a href="login.html">ログインページへ</a>'
+      + '<br /><span class="en">Could not check your sign-in status. <a href="login.html">Go to the sign-in page</a></span>';
   }
 );
 
@@ -511,7 +522,8 @@ setTimeout(() => {
   if (!authResolved) {
     authGate.hidden = false;
     authGate.innerHTML =
-      'ログイン状態を確認できませんでした。<a href="login.html">ログインページへ</a>';
+      'ログイン状態を確認できませんでした。<a href="login.html">ログインページへ</a>'
+      + '<br /><span class="en">Could not check your sign-in status. <a href="login.html">Go to the sign-in page</a></span>';
   }
 }, 8000);
 
