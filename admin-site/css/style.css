@@ -67,22 +67,33 @@ body {
 
 :focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; border-radius: 6px; }
 
-/* ===== 日英併記：英語は補助的に小さく・薄く ===== */
-.en,
-.en-b {
-  font-family: var(--font-en);
-  font-weight: 400;
-  font-size: .82em;
-  color: var(--ink-soft);
-  letter-spacing: 0;
-  text-transform: none;
+/* ===== 言語切り替えトグル（JP / EN） ===== */
+.lang-toggle {
+  display: inline-flex;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--foam);
 }
-.en-b { display: block; margin-top: 3px; line-height: 1.4; }
-/* ボタン内の英語は行間を詰めて縦積みに */
-.btn .en-b,
-.btn-ghost .en-b,
-.btn-google .en-b,
-.choice-card__label .en-b { margin-top: 1px; }
+.lang-toggle__btn {
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  padding: 6px 11px;
+  cursor: pointer;
+  transition: background .18s ease, color .18s ease;
+}
+.lang-toggle__btn + .lang-toggle__btn { border-left: 1px solid var(--line); }
+.lang-toggle__btn:hover { background: var(--water); color: var(--sky-deep); }
+.lang-toggle__btn.is-active { background: var(--sky-deep); color: #fff; }
+
+/* ログインカードでは中央・上に置く */
+.auth-card .lang-toggle { margin: 0 0 20px; }
 
 /* =========================================================
    ログインページ

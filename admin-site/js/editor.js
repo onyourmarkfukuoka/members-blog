@@ -2,11 +2,13 @@
    On Your Mark! Staff Blog Edit — 編集画面のロジック
    ---------------------------------------------------------
    HTMLには一切JSを書かず、ここだけで動きを管理します。
+   画面の文言は js/i18n.js（JP / EN 切り替え）を通して出します。
 
    やること：
    - ログイン状態を監視。未ログインなら login.html へ送る
-   - 上部に「◯◯さん ようこそ!」（Googleの表示名）
+   - 上部に「◯◯さん ようこそ!」（users/{uid}.displayName ＞ Googleの名前）
    - フォーム：タイトル / 日付 / 編集者名 / カテゴリ / 写真（最大2枚） / 本文
+     ・「編集者名」の初期値は、ヘッダーの表示名（profileName）
    - 写真は保存・公開時に Firebase Storage へアップロードし、URLを photos に保存
    - 「一時保存」= status:"draft"、「公開」= status:"published"
    - posts コレクションの一覧を読み込み、選んで再編集
@@ -18,6 +20,8 @@
      status       … "draft" | "published"
      authorUid    … 最初に作成したユーザーの uid
      createdAt, updatedAt, publishedAt … サーバータイムスタンプ
+
+   users/{uid}      … { displayName, updatedAt }（本人だけ読み書き可）
    ========================================================= */
 
 const auth = firebase.auth();
@@ -27,18 +31,15 @@ const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp;
 
 const MAX_PHOTOS = 2; // 写真は最大2枚まで
 
-/* カテゴリ：値（Firestore） と 表示名 の対応。初期値は "other"（その他）。 */
-const CATEGORIES = [
-  { key: "camp",    label: "キャンプ当日 / Camp day" },
-  { key: "meeting", label: "ミーティング / Meeting" },
-  { key: "other",   label: "その他 / Other" }
-];
-const CATEGORY_KEYS = CATEGORIES.map((c) => c.key);
+/* 文言取得のショートカット（js/i18n.js） */
+const t = (key, params) => (window.I18N ? window.I18N.t(key, params) : key);
+
+/* カテゴリ：Firestore の保存値。表示名は i18n の "cat.*" キーで出す。
+   （保存値 camp/meeting/other は変更しない。表示だけ言語で切り替える） */
+const CATEGORY_KEYS = ["camp", "meeting", "other"];
 const DEFAULT_CATEGORY = "other";
-const categoryLabel = (key) => {
-  const found = CATEGORIES.find((c) => c.key === key);
-  return found ? found.label : "その他 / Other";
-};
+const categoryLabel = (key) =>
+  t("cat." + (CATEGORY_KEYS.includes(key) ? key : DEFAULT_CATEGORY));
 
 const el = (id) => document.getElementById(id);
 
@@ -93,9 +94,8 @@ let currentUser = null;
 let editingId = null;      // 編集中ドキュメントID（新規なら null）
 let editingSnapshot = null; // 編集中ドキュメントの現在の中身
 
-/* ヘッダーのあいさつに使う表示名。
-   users/{uid}.displayName に保存された各自の呼び名。未設定なら null。
-   ※ 記事の editorName（記事ごとに入力）とは別物。 */
+/* ヘッダーのあいさつ＆新規記事の編集者名の初期値に使う表示名。
+   users/{uid}.displayName に保存された各自の呼び名。未設定なら null。 */
 let profileName = null;
 
 /* 写真スロット（順番＝表示順・最大2）
@@ -103,6 +103,14 @@ let profileName = null;
    { kind: "new", file, previewUrl }    … これからアップロードする写真 */
 let photoSlots = [];
 let removedPhotoUrls = []; // 保存時に Storage から消したい既存写真のURL
+
+/* 一覧のキャッシュ（言語を切り替えたときに読み直さず出し直すため） */
+let cachedMyPosts = [];
+
+/* 言語が変わっても出し直せるよう、動的テキストは「キー＋パラメータ」で保持 */
+let formStatusState = null; // { key, params, isError } | null
+let nameStatusState = null; // 同上
+let gateErrShown = false;
 
 /* ----------------------- 便利関数 ----------------------- */
 function todayIso() {
@@ -115,10 +123,22 @@ function formatDate(iso) {
   const [y, m, d] = iso.split("-");
   return `${y}.${m}.${d}`;
 }
-function setFormStatus(text, isError = false) {
-  formStatus.textContent = text || "";
-  formStatus.classList.toggle("is-error", !!isError);
+
+function setFormStatus(key, opts) {
+  opts = opts || {};
+  formStatusState = key ? { key, params: opts.params || null, isError: !!opts.isError } : null;
+  renderFormStatus();
 }
+function renderFormStatus() {
+  if (!formStatusState) {
+    formStatus.textContent = "";
+    formStatus.classList.remove("is-error");
+    return;
+  }
+  formStatus.textContent = t(formStatusState.key, formStatusState.params);
+  formStatus.classList.toggle("is-error", formStatusState.isError);
+}
+
 function setBusy(busy) {
   saveDraftBtn.disabled = busy;
   publishBtn.disabled = busy;
@@ -128,33 +148,46 @@ function setBusy(busy) {
   postList.classList.toggle("is-busy", busy); // 保存・削除中は一覧の操作を止める
 }
 
+/* 見出し・ヒントは data-i18n 属性を差し替えておく。
+   言語切り替え時は i18n.js の applyStatic が拾って自動で訳し直してくれる。 */
+function setFormTitle(key) {
+  formTitle.setAttribute("data-i18n", key);
+  formTitle.textContent = t(key);
+}
+function setEditingHint(key) {
+  if (!key) {
+    editingHint.hidden = true;
+    editingHint.removeAttribute("data-i18n");
+    editingHint.textContent = "";
+    return;
+  }
+  editingHint.hidden = false;
+  editingHint.setAttribute("data-i18n", key);
+  editingHint.textContent = t(key);
+}
+function setListEmpty(key) {
+  listEmpty.setAttribute("data-i18n", key);
+  listEmpty.textContent = t(key);
+}
+
 /* ----------------------- ヘッダーの表示名（あいさつ用） ----------------------- */
-/* あいさつに使う名前。優先順位：
+/* あいさつ／編集者名の初期値に使う名前。優先順位：
    1) 各自が設定した表示名（users/{uid}.displayName）
    2) Google アカウントの名前 / メール（未設定時の暫定）
-   3) "スタッフ" */
+   3) i18n の "name.fallback" */
 function greetingName() {
   return profileName
     || (currentUser && (currentUser.displayName || currentUser.email))
-    || "スタッフ";
+    || t("name.fallback");
 }
 
 /* ヘッダーの「◯◯さん ようこそ！」と選択画面の見出しをまとめて更新 */
 function updateGreetings() {
   const name = greetingName();
-  welcome.textContent = `${name}さん ようこそ！ / Welcome, ${name}!`;
-  homeChoiceTitle.textContent = `${name}さん、何をしますか？ / Hi ${name}, what would you like to do?`;
-
-  // 表示名が未設定なら、設定をうながす一文を出す
-  const unset = !profileName;
-  welcomeHint.hidden = !unset;
-  if (unset) {
-    welcomeHint.textContent =
-      "表示名が未設定です。いまはGoogleアカウントの名前を表示しています。"
-      + "「表示名を変更」から自分の呼び名を設定できます。 / "
-      + "Display name not set — showing your Google account name for now. "
-      + "Use “Change display name” to set your own.";
-  }
+  welcome.textContent = t("welcome", { name });
+  homeChoiceTitle.textContent = t("choice.greeting", { name });
+  // 表示名が未設定なら、設定をうながす一文を出す（文言は data-i18n で管理）
+  welcomeHint.hidden = !!profileName;
 }
 
 /* ログイン中ユーザーの表示名を Firestore から読み込む */
@@ -173,11 +206,29 @@ async function loadProfile() {
     profileName = null;
   }
   updateGreetings();
+
+  // 新規フォームの編集者名が「未入力」または「Googleの名前のまま（＝手入力なし）」なら、
+  // 表示名に追従させる。手で書き換えたものは触らない。
+  if (!editingId && profileName) {
+    const cur = fEditor.value.trim();
+    const wasGoogleName = currentUser && currentUser.displayName && cur === currentUser.displayName;
+    if (!cur || wasGoogleName) fEditor.value = profileName;
+  }
 }
 
-function setNameStatus(text, isError = false) {
-  nameStatus.textContent = text || "";
-  nameStatus.classList.toggle("is-error", !!isError);
+function setNameStatus(key, opts) {
+  opts = opts || {};
+  nameStatusState = key ? { key, params: opts.params || null, isError: !!opts.isError } : null;
+  renderNameStatus();
+}
+function renderNameStatus() {
+  if (!nameStatusState) {
+    nameStatus.textContent = "";
+    nameStatus.classList.remove("is-error");
+    return;
+  }
+  nameStatus.textContent = t(nameStatusState.key, nameStatusState.params);
+  nameStatus.classList.toggle("is-error", nameStatusState.isError);
 }
 
 function openNameEditor() {
@@ -205,17 +256,17 @@ async function saveName() {
   if (!currentUser) return;
   const value = nameInput.value.trim();
   if (!value) {
-    setNameStatus("表示名を入力してください。 / Please enter a display name.", true);
+    setNameStatus("name.err.empty", { isError: true });
     return;
   }
   if (value.length > 40) {
-    setNameStatus("表示名は40文字以内にしてください。 / Please keep it to 40 characters or fewer.", true);
+    setNameStatus("name.err.long", { isError: true });
     return;
   }
 
   nameSaveBtn.disabled = true;
   nameCancelBtn.disabled = true;
-  setNameStatus("保存しています… / Saving…");
+  setNameStatus("name.saving");
 
   try {
     await db.collection("users").doc(currentUser.uid).set(
@@ -224,11 +275,20 @@ async function saveName() {
     );
     profileName = value;
     updateGreetings();
-    setNameStatus("保存しました。 / Saved.");
+
+    // これ以降の新規記事の編集者名の初期値に反映。
+    // いま開いている新規フォームが未入力／旧デフォルトのままなら、その場でも更新。
+    if (!editingId) {
+      const cur = fEditor.value.trim();
+      const wasGoogleName = currentUser && currentUser.displayName && cur === currentUser.displayName;
+      if (!cur || wasGoogleName) fEditor.value = value;
+    }
+
+    setNameStatus("name.saved");
     setTimeout(closeNameEditor, 900);
   } catch (err) {
     console.error("saveName error:", err);
-    setNameStatus("保存に失敗しました。もう一度お試しください。 / Save failed. Please try again.", true);
+    setNameStatus("name.err.save", { isError: true });
   } finally {
     nameSaveBtn.disabled = false;
     nameCancelBtn.disabled = false;
@@ -248,12 +308,12 @@ function renderPhotos() {
 
     const img = document.createElement("img");
     img.src = slot.kind === "existing" ? slot.url : slot.previewUrl;
-    img.alt = `写真 ${i + 1} / Photo ${i + 1}`;
+    img.alt = t("photo.alt", { n: i + 1 });
 
     const del = document.createElement("button");
     del.type = "button";
     del.className = "photo-item__del";
-    del.setAttribute("aria-label", `写真 ${i + 1} を削除 / Remove photo ${i + 1}`);
+    del.setAttribute("aria-label", t("photo.remove", { n: i + 1 }));
     del.textContent = "×";
     del.addEventListener("click", () => removePhoto(i));
 
@@ -262,10 +322,10 @@ function renderPhotos() {
   });
 
   photoAddLabel.hidden = photoSlots.length >= MAX_PHOTOS;
-  photoHint.textContent =
-    photoSlots.length >= MAX_PHOTOS
-      ? "写真は最大2枚です。差し替えるには、どれか削除してください。 / Up to 2 photos. Delete one to swap it out."
-      : "JPEG / PNG など。保存・公開したときにアップロードされます。 / JPEG / PNG, etc. Uploaded when you save or publish.";
+
+  const hintKey = photoSlots.length >= MAX_PHOTOS ? "photo.hintFull" : "photo.hint";
+  photoHint.setAttribute("data-i18n", hintKey);
+  photoHint.textContent = t(hintKey);
 }
 
 function addFiles(fileList) {
@@ -273,11 +333,11 @@ function addFiles(fileList) {
   let added = 0;
   for (const file of files) {
     if (photoSlots.length >= MAX_PHOTOS) {
-      setFormStatus("写真は最大2枚までです。 / You can add up to 2 photos.", true);
+      setFormStatus("photo.err.max", { isError: true });
       break;
     }
     if (!file.type || !file.type.startsWith("image/")) {
-      setFormStatus("画像ファイルを選んでください。 / Please choose an image file.", true);
+      setFormStatus("photo.err.type", { isError: true });
       continue;
     }
     photoSlots.push({ kind: "new", file, previewUrl: URL.createObjectURL(file) });
@@ -341,15 +401,18 @@ function resetForm() {
   form.reset();
   fDate.value = todayIso();
   fCategory.value = DEFAULT_CATEGORY; // 初期選択は「その他」
-  if (currentUser && currentUser.displayName) fEditor.value = currentUser.displayName;
+
+  // 編集者名の初期値：ヘッダーの表示名 ＞ Google の名前
+  const defaultEditor = profileName || (currentUser && currentUser.displayName) || "";
+  if (defaultEditor) fEditor.value = defaultEditor;
 
   clearPhotoPreviews();
   photoSlots = [];
   removedPhotoUrls = [];
   renderPhotos();
 
-  formTitle.textContent = "新しい記事 / New post";
-  editingHint.hidden = true;
+  setFormTitle("form.newTitle");
+  setEditingHint(null);
   setFormStatus("");
   highlightSelected();
 }
@@ -372,12 +435,8 @@ function fillForm(id, data) {
   removedPhotoUrls = [];
   renderPhotos();
 
-  formTitle.textContent = "記事を編集 / Edit post";
-  editingHint.hidden = false;
-  editingHint.textContent =
-    data.status === "published"
-      ? "この記事は現在【公開中】です。保存すると内容が更新されます。 / This post is currently LIVE. Saving updates it right away."
-      : "この記事は【下書き】です。「公開」を押すと公開サイトに出ます。 / This post is a DRAFT. Press Publish to make it live on the blog.";
+  setFormTitle("form.editTitle");
+  setEditingHint(data.status === "published" ? "hint.published" : "hint.draft");
   setFormStatus("");
   highlightSelected();
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -393,20 +452,21 @@ function readForm() {
   };
 }
 
+/* 問題があれば i18n のキーを返す。無ければ null。 */
 function validate(v) {
-  if (!v.title) return "タイトルを入力してください。 / Please enter a title.";
-  if (!v.date) return "日付を選んでください。 / Please choose a date.";
-  if (!v.editorName) return "編集者名を入力してください。 / Please enter an editor name.";
-  if (!CATEGORY_KEYS.includes(v.category)) return "カテゴリを選んでください。 / Please choose a category.";
-  if (!v.body) return "本文を入力してください。 / Please enter the body text.";
+  if (!v.title) return "err.title";
+  if (!v.date) return "err.date";
+  if (!v.editorName) return "err.editor";
+  if (!CATEGORY_KEYS.includes(v.category)) return "err.category";
+  if (!v.body) return "err.body";
   return null;
 }
 
 /* ----------------------- 保存（下書き / 公開 共通） ----------------------- */
 async function save(status) {
   const v = readForm();
-  const error = validate(v);
-  if (error) { setFormStatus(error, true); return; }
+  const errKey = validate(v);
+  if (errKey) { setFormStatus(errKey, { isError: true }); return; }
 
   setBusy(true);
 
@@ -422,7 +482,7 @@ async function save(status) {
       if (slot.kind === "existing") {
         photos.push(slot.url);
       } else {
-        setFormStatus(`写真をアップロードしています…（${photos.length + 1}枚目） / Uploading photo ${photos.length + 1}…`);
+        setFormStatus("save.uploading", { params: { n: photos.length + 1 } });
         photos.push(await uploadPhoto(postId, slot.file));
       }
     }
@@ -437,9 +497,7 @@ async function save(status) {
       }
     }
 
-    setFormStatus(status === "published"
-      ? "公開しています… / Publishing…"
-      : "保存しています… / Saving…");
+    setFormStatus(status === "published" ? "save.publishing" : "save.saving");
 
     // 3) ドキュメント本体を保存
     const payload = {
@@ -473,18 +531,14 @@ async function save(status) {
     removedPhotoUrls = [];
     renderPhotos();
 
-    setFormStatus(
-      status === "published"
-        ? "公開しました。公開サイトに反映されます。 / Published. It will appear on the blog."
-        : "下書きとして保存しました。 / Saved as a draft."
-    );
-    formTitle.textContent = "記事を編集 / Edit post";
-    editingHint.hidden = false;
+    setFormStatus(status === "published" ? "save.published" : "save.savedDraft");
+    setFormTitle("form.editTitle");
+    setEditingHint(status === "published" ? "hint.published" : "hint.draft");
     // 一覧を読み直す（onSnapshot にしていないので手動で）
     await loadPosts();
   } catch (err) {
     console.error("save error:", err);
-    setFormStatus("保存に失敗しました。通信状況を確認してもう一度お試しください。 / Save failed. Check your connection and try again.", true);
+    setFormStatus("save.err", { isError: true });
   } finally {
     setBusy(false);
   }
@@ -492,18 +546,12 @@ async function save(status) {
 
 /* ----------------------- 削除（下書き・公開済みどちらも） ----------------------- */
 async function deletePost(id, data) {
-  const label = data && data.title ? `「${data.title}」` : "この記事";
-  const labelEn = data && data.title ? `"${data.title}"` : "this post";
-  const pubNote = data && data.status === "published"
-    ? "\n※ 公開中の記事です。公開サイトからも消えます。\n* This post is live and will also disappear from the blog."
-    : "";
-  if (!window.confirm(
-        `${label}を削除します。元に戻せません。${pubNote}\n\n削除してよろしいですか？\n\n`
-        + `Delete ${labelEn}? This cannot be undone. Are you sure?`
-      )) return;
+  const label = data && data.title ? t("del.label", { title: data.title }) : t("del.thisPost");
+  const pubNote = data && data.status === "published" ? t("del.pubNote") : "";
+  if (!window.confirm(t("del.confirm", { label, pubNote }))) return;
 
   setBusy(true);
-  setFormStatus("削除しています… / Deleting…");
+  setFormStatus("del.deleting");
   try {
     // 1) 添付写真を Storage から消す（失敗しても続行）
     for (const url of (data && data.photos) || []) {
@@ -523,74 +571,89 @@ async function deletePost(id, data) {
       if (adminMain.dataset.view === "edit") editorPanel.hidden = true;
     }
 
-    setFormStatus("削除しました。 / Deleted.");
+    setFormStatus("del.done");
     await loadPosts();
   } catch (err) {
     console.error("deletePost error:", err);
-    setFormStatus("削除に失敗しました。通信状況や権限を確認してもう一度お試しください。 / Delete failed. Check your connection and permissions, then try again.", true);
+    setFormStatus("del.err", { isError: true });
   } finally {
     setBusy(false);
   }
 }
 
-/* ----------------------- 一覧の読み込み ----------------------- */
+/* ----------------------- 一覧の読み込み・描画 ----------------------- */
 async function loadPosts() {
   try {
     const snap = await db.collection("posts").orderBy("date", "desc").get();
 
-    postList.innerHTML = "";
-    let shown = 0;
-
+    cachedMyPosts = [];
     snap.forEach((doc) => {
       const p = doc.data();
       // 自分（ログイン中のユーザー）が書いた記事だけを表示する
       if (!currentUser || p.authorUid !== currentUser.uid) return;
-      shown += 1;
-
-      const li = document.createElement("li");
-      li.className = "post-list__item";
-      li.dataset.id = doc.id;
-
-      const badgeClass = p.status === "published" ? "badge--pub" : "badge--draft";
-      const badgeText = p.status === "published" ? "公開中 / Live" : "下書き / Draft";
-
-      li.innerHTML = `
-        <button class="post-list__pick" type="button">
-          <span class="post-list__row">
-            <span class="badge ${badgeClass}">${badgeText}</span>
-            <span class="post-list__cat"></span>
-            <time class="post-list__date"></time>
-          </span>
-          <span class="post-list__title"></span>
-          <span class="post-list__editor"></span>
-        </button>
-        <div class="post-list__actions">
-          <button class="post-list__act post-list__act--edit" type="button">編集 / Edit</button>
-          <button class="post-list__act post-list__act--del" type="button">削除 / Delete</button>
-        </div>`;
-
-      // category が無い既存記事は「その他」表示
-      li.querySelector(".post-list__cat").textContent =
-        categoryLabel(CATEGORY_KEYS.includes(p.category) ? p.category : DEFAULT_CATEGORY);
-      li.querySelector(".post-list__date").textContent = formatDate(p.date);
-      li.querySelector(".post-list__title").textContent = p.title || "(タイトルなし) / (untitled)";
-      li.querySelector(".post-list__editor").textContent = p.editorName ? `編集 / Editor：${p.editorName}` : "";
-
-      // カード本体クリック／「編集」ボタン＝フォームに読み込んで編集
-      li.querySelector(".post-list__pick").addEventListener("click", () => fillForm(doc.id, p));
-      li.querySelector(".post-list__act--edit").addEventListener("click", () => fillForm(doc.id, p));
-      // 「削除」ボタン＝公開済みでも記事を削除
-      li.querySelector(".post-list__act--del").addEventListener("click", () => deletePost(doc.id, p));
-      postList.appendChild(li);
+      cachedMyPosts.push({ id: doc.id, data: p });
     });
 
-    listEmpty.hidden = shown > 0;
-    highlightSelected();
+    renderPostList();
   } catch (err) {
     console.error("loadPosts error:", err);
+    cachedMyPosts = [];
+    postList.innerHTML = "";
+    setListEmpty("list.loadErr");
     listEmpty.hidden = false;
-    listEmpty.textContent = "一覧を読み込めませんでした。 / Could not load the list.";
   }
+}
+
+/* キャッシュから一覧を組み立てる（言語切り替え時もこれを呼ぶだけ） */
+function renderPostList() {
+  postList.innerHTML = "";
+
+  cachedMyPosts.forEach(({ id, data: p }) => {
+    const li = document.createElement("li");
+    li.className = "post-list__item";
+    li.dataset.id = id;
+
+    const badgeClass = p.status === "published" ? "badge--pub" : "badge--draft";
+
+    li.innerHTML = `
+      <button class="post-list__pick" type="button">
+        <span class="post-list__row">
+          <span class="badge ${badgeClass}"></span>
+          <span class="post-list__cat"></span>
+          <time class="post-list__date"></time>
+        </span>
+        <span class="post-list__title"></span>
+        <span class="post-list__editor"></span>
+      </button>
+      <div class="post-list__actions">
+        <button class="post-list__act post-list__act--edit" type="button"></button>
+        <button class="post-list__act post-list__act--del" type="button"></button>
+      </div>`;
+
+    li.querySelector(".badge").textContent = t(p.status === "published" ? "badge.live" : "badge.draft");
+    li.querySelector(".post-list__act--edit").textContent = t("list.editBtn");
+    li.querySelector(".post-list__act--del").textContent = t("list.delBtn");
+
+    // category が無い既存記事は「その他」表示
+    li.querySelector(".post-list__cat").textContent =
+      categoryLabel(CATEGORY_KEYS.includes(p.category) ? p.category : DEFAULT_CATEGORY);
+    li.querySelector(".post-list__date").textContent = formatDate(p.date);
+    li.querySelector(".post-list__title").textContent = p.title || t("list.untitled");
+    li.querySelector(".post-list__editor").textContent =
+      p.editorName ? t("list.editorPrefix", { name: p.editorName }) : "";
+
+    // カード本体クリック／「編集」ボタン＝フォームに読み込んで編集
+    li.querySelector(".post-list__pick").addEventListener("click", () => fillForm(id, p));
+    li.querySelector(".post-list__act--edit").addEventListener("click", () => fillForm(id, p));
+    // 「削除」ボタン＝公開済みでも記事を削除
+    li.querySelector(".post-list__act--del").addEventListener("click", () => deletePost(id, p));
+
+    postList.appendChild(li);
+  });
+
+  if (cachedMyPosts.length === 0) setListEmpty("list.empty");
+  listEmpty.hidden = cachedMyPosts.length > 0;
+  highlightSelected();
 }
 
 function highlightSelected() {
@@ -599,8 +662,24 @@ function highlightSelected() {
   });
 }
 
+/* ----------------------- 言語切り替え時：動的テキストを出し直す ----------------------- */
+window.addEventListener("i18n:change", () => {
+  updateGreetings();
+  renderFormStatus();
+  renderNameStatus();
+  renderPhotos();
+  renderPostList();
+  if (gateErrShown) authGate.innerHTML = "<p>" + t("gate.err") + "</p>";
+});
+
 /* ----------------------- ログイン状態の監視 ----------------------- */
 let authResolved = false;
+
+function showGateError() {
+  gateErrShown = true;
+  authGate.hidden = false;
+  authGate.innerHTML = "<p>" + t("gate.err") + "</p>";
+}
 
 auth.onAuthStateChanged(
   (user) => {
@@ -621,7 +700,7 @@ auth.onAuthStateChanged(
     authGate.hidden = true;
     adminApp.hidden = false;
 
-    loadProfile();    // 保存済みの表示名を読み込んで、あいさつを差し替える
+    loadProfile();    // 保存済みの表示名を読み込んで、あいさつ／編集者名の初期値に反映
     resetForm();
     loadPosts();      // 一覧は裏で用意しておく（自分の記事だけ）
     showHome();       // まずは「新規作成 / 既存を編集」の選択画面を出す
@@ -630,21 +709,13 @@ auth.onAuthStateChanged(
     // 認証状態の取得自体に失敗したときも、確認中表示のまま固まらせない
     authResolved = true;
     console.error("onAuthStateChanged error:", err);
-    authGate.hidden = false;
-    authGate.innerHTML =
-      'ログイン状態を確認できませんでした。<a href="login.html">ログインページへ</a>'
-      + '<br /><span class="en">Could not check your sign-in status. <a href="login.html">Go to the sign-in page</a></span>';
+    showGateError();
   }
 );
 
 // 保険：一定時間たっても認証状態が返ってこないとき（通信不良など）は案内を出す
 setTimeout(() => {
-  if (!authResolved) {
-    authGate.hidden = false;
-    authGate.innerHTML =
-      'ログイン状態を確認できませんでした。<a href="login.html">ログインページへ</a>'
-      + '<br /><span class="en">Could not check your sign-in status. <a href="login.html">Go to the sign-in page</a></span>';
-  }
+  if (!authResolved) showGateError();
 }, 8000);
 
 /* ----------------------- イベント ----------------------- */

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>On Your Mark! Staff Blog Edit — 編集 / Edit</title>
+  <title data-i18n="edit.docTitle">On Your Mark! Staff Blog Edit — 編集</title>
   <meta name="robots" content="noindex" />
 
   <!-- Fonts（公開サイトと同じ） -->
@@ -17,7 +17,7 @@
 
   <!-- ログイン確認が終わるまでは中身を隠しておく（ちらつき防止） -->
   <div class="auth-gate" id="authGate">
-    <p>ログイン状態を確認しています… <span class="en">Checking your sign-in status…</span></p>
+    <p data-i18n="gate.checking">ログイン状態を確認しています…</p>
   </div>
 
   <div class="admin-app" id="adminApp" hidden>
@@ -35,29 +35,30 @@
       </a>
 
       <div class="admin-header__user">
-        <button class="btn-ghost" id="menuBtn" type="button" hidden>← メニュー <span class="en">Menu</span></button>
+        <div class="lang-toggle" role="group" data-i18n-aria-label="lang.group">
+          <button type="button" class="lang-toggle__btn" data-lang-btn="ja" aria-pressed="true">JP</button>
+          <button type="button" class="lang-toggle__btn" data-lang-btn="en" aria-pressed="false">EN</button>
+        </div>
+        <button class="btn-ghost" id="menuBtn" type="button" hidden data-i18n="header.menu">← メニュー</button>
         <span class="welcome" id="welcome"></span>
-        <button class="btn-ghost" id="editNameBtn" type="button" aria-expanded="false" aria-controls="namePanel">表示名を変更 <span class="en">Change display name</span></button>
-        <button class="btn-ghost" id="logoutBtn" type="button">ログアウト <span class="en">Log out</span></button>
+        <button class="btn-ghost" id="editNameBtn" type="button" aria-expanded="false" aria-controls="namePanel" data-i18n="header.changeName">表示名を変更</button>
+        <button class="btn-ghost" id="logoutBtn" type="button" data-i18n="header.logout">ログアウト</button>
       </div>
     </header>
 
-    <!-- ===== 表示名（ヘッダーのあいさつ用） ===== -->
-    <p class="welcome-hint" id="welcomeHint" hidden></p>
+    <!-- ===== 表示名（ヘッダーのあいさつ／編集者名の初期値） ===== -->
+    <p class="welcome-hint" id="welcomeHint" data-i18n="name.unsetHint" hidden></p>
 
     <div class="name-editor" id="namePanel" hidden>
       <div class="name-editor__inner">
-        <label class="field__label" for="nameInput">表示名 <span class="en">Display name</span></label>
-        <p class="name-editor__note">
-          ヘッダーのあいさつに表示される名前です。記事ごとに入力する「編集者名」とは別です。
-          <span class="en-b">The name shown in the header greeting. This is separate from the "editor name" you enter on each post.</span>
-        </p>
+        <label class="field__label" for="nameInput" data-i18n="name.label">表示名</label>
+        <p class="name-editor__note" data-i18n="name.note">ヘッダーのあいさつに表示される名前です。新しい記事の「編集者名」の初期値にもなります（記事ごとに書き換え可）。</p>
         <div class="name-editor__row">
           <input class="field__input" type="text" id="nameInput" maxlength="40"
-                 autocomplete="off" placeholder="例：はるか / e.g. Haruka" />
+                 autocomplete="off" data-i18n-placeholder="name.placeholder" placeholder="例：はるか" />
           <div class="name-editor__actions">
-            <button class="btn btn--primary" type="button" id="nameSaveBtn">保存 <span class="en">Save</span></button>
-            <button class="btn btn--ghost" type="button" id="nameCancelBtn">キャンセル <span class="en">Cancel</span></button>
+            <button class="btn btn--primary" type="button" id="nameSaveBtn" data-i18n="name.save">保存</button>
+            <button class="btn btn--ghost" type="button" id="nameCancelBtn" data-i18n="name.cancel">キャンセル</button>
           </div>
         </div>
         <p class="name-editor__status" id="nameStatus" role="status" aria-live="polite"></p>
@@ -68,17 +69,17 @@
 
       <!-- ===== 最初の選択画面 ===== -->
       <section class="home-choice" id="homeChoice" hidden>
-        <h1 class="home-choice__title" id="homeChoiceTitle">何をしますか？ <span class="en-b">What would you like to do?</span></h1>
+        <h1 class="home-choice__title" id="homeChoiceTitle" data-i18n="choice.title">何をしますか？</h1>
         <div class="home-choice__grid">
           <button class="choice-card" id="chooseNew" type="button">
             <span class="choice-card__icon" aria-hidden="true">＋</span>
-            <span class="choice-card__label">新しい記事を作成 <span class="en-b">New post</span></span>
-            <span class="choice-card__desc">白紙から記事を書きます <span class="en-b">Start writing from scratch</span></span>
+            <span class="choice-card__label" data-i18n="choice.newLabel">新しい記事を作成</span>
+            <span class="choice-card__desc" data-i18n="choice.newDesc">白紙から記事を書きます</span>
           </button>
           <button class="choice-card" id="chooseEdit" type="button">
             <span class="choice-card__icon" aria-hidden="true">✎</span>
-            <span class="choice-card__label">既存の記事を編集 <span class="en-b">Edit an existing post</span></span>
-            <span class="choice-card__desc">自分が書いた記事を選んで直します <span class="en-b">Pick one of your posts and revise it</span></span>
+            <span class="choice-card__label" data-i18n="choice.editLabel">既存の記事を編集</span>
+            <span class="choice-card__desc" data-i18n="choice.editDesc">自分が書いた記事を選んで直します</span>
           </button>
         </div>
       </section>
@@ -86,61 +87,61 @@
       <!-- ===== 編集フォーム ===== -->
       <section class="editor-panel" id="editorPanel" hidden>
         <div class="editor-panel__head">
-          <h1 class="editor-panel__title" id="formTitle">新しい記事 / New post</h1>
-          <button class="btn-ghost" id="newPostBtn" type="button">＋ 新規作成 <span class="en">New</span></button>
+          <h1 class="editor-panel__title" id="formTitle" data-i18n="form.newTitle">新しい記事</h1>
+          <button class="btn-ghost" id="newPostBtn" type="button" data-i18n="form.new">＋ 新規作成</button>
         </div>
 
         <form class="post-form" id="postForm">
           <div class="field">
-            <label class="field__label" for="fTitle">タイトル <span class="en">Title</span></label>
+            <label class="field__label" for="fTitle" data-i18n="field.title">タイトル</label>
             <input class="field__input" type="text" id="fTitle" name="title"
-                   placeholder="記事のタイトル / Article title" autocomplete="off" required />
+                   data-i18n-placeholder="field.title.ph" placeholder="記事のタイトル" autocomplete="off" required />
           </div>
 
           <div class="field-row">
             <div class="field">
-              <label class="field__label" for="fDate">日付 <span class="en">Date</span></label>
+              <label class="field__label" for="fDate" data-i18n="field.date">日付</label>
               <input class="field__input" type="date" id="fDate" name="date" required />
             </div>
             <div class="field">
-              <label class="field__label" for="fEditor">編集者名 <span class="en">Editor name</span></label>
+              <label class="field__label" for="fEditor" data-i18n="field.editor">編集者名</label>
               <input class="field__input" type="text" id="fEditor" name="editorName"
-                     placeholder="例：はるか / e.g. Haruka" autocomplete="off" required />
+                     data-i18n-placeholder="field.editor.ph" placeholder="例：はるか" autocomplete="off" required />
             </div>
           </div>
 
           <div class="field">
-            <label class="field__label" for="fCategory">カテゴリ <span class="en">Category</span></label>
+            <label class="field__label" for="fCategory" data-i18n="field.category">カテゴリ</label>
             <select class="field__input field__input--select" id="fCategory" name="category" required>
-              <option value="camp">キャンプ当日 / Camp day</option>
-              <option value="meeting">ミーティング / Meeting</option>
-              <option value="other" selected>その他 / Other</option>
+              <option value="camp" data-i18n="cat.camp">キャンプ当日</option>
+              <option value="meeting" data-i18n="cat.meeting">ミーティング</option>
+              <option value="other" selected data-i18n="cat.other">その他</option>
             </select>
           </div>
 
           <div class="field">
-            <span class="field__label">写真（最大2枚） <span class="en">Photos (up to 2)</span></span>
+            <span class="field__label" data-i18n="field.photos">写真（最大2枚）</span>
             <div class="photo-uploader" id="photoUploader">
               <ul class="photo-list" id="photoList"><!-- editor.js が入れます --></ul>
               <label class="photo-add" id="photoAddLabel">
                 <input type="file" id="photoInput" accept="image/*" multiple hidden />
-                <span>＋ 写真を追加<span class="en-b">Add photo</span></span>
+                <span data-i18n="photo.add">＋ 写真を追加</span>
               </label>
             </div>
-            <p class="field__hint" id="photoHint">JPEG / PNG など。保存・公開したときにアップロードされます。 <span class="en-b">JPEG / PNG, etc. Uploaded when you save or publish.</span></p>
+            <p class="field__hint" id="photoHint" data-i18n="photo.hint">JPEG / PNG など。保存・公開したときにアップロードされます。</p>
           </div>
 
           <div class="field">
-            <label class="field__label" for="fBody">本文 <span class="en">Body</span></label>
+            <label class="field__label" for="fBody" data-i18n="field.body">本文</label>
             <textarea class="field__input field__input--area" id="fBody" name="body"
-                      rows="14" placeholder="ここに本文を書きます。段落は空行で区切ってください。 / Write the body here. Separate paragraphs with a blank line." required></textarea>
+                      rows="14" data-i18n-placeholder="field.body.ph" placeholder="ここに本文を書きます。段落は空行で区切ってください。" required></textarea>
           </div>
 
           <p class="form-status" id="formStatus" role="status" aria-live="polite"></p>
 
           <div class="form-actions">
-            <button class="btn btn--ghost" type="button" id="saveDraftBtn">一時保存 <span class="en">Save draft</span></button>
-            <button class="btn btn--primary" type="button" id="publishBtn">公開 <span class="en">Publish</span></button>
+            <button class="btn btn--ghost" type="button" id="saveDraftBtn" data-i18n="form.saveDraft">一時保存</button>
+            <button class="btn btn--primary" type="button" id="publishBtn" data-i18n="form.publish">公開</button>
           </div>
           <p class="form-hint" id="editingHint" hidden></p>
         </form>
@@ -148,8 +149,8 @@
 
       <!-- ===== 記事一覧（自分が書いた記事） ===== -->
       <section class="list-panel" id="listPanel" hidden>
-        <h2 class="list-panel__title">自分が書いた記事 <span class="en-b">Your posts</span></h2>
-        <p class="list-panel__empty" id="listEmpty" hidden>あなたが書いた記事はまだありません。 / You haven't written any posts yet.</p>
+        <h2 class="list-panel__title" data-i18n="list.title">自分が書いた記事</h2>
+        <p class="list-panel__empty" id="listEmpty" data-i18n="list.empty" hidden>あなたが書いた記事はまだありません。</p>
         <ul class="post-list" id="postList"><!-- editor.js が入れます --></ul>
       </section>
 
@@ -164,6 +165,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js" defer></script>
   <script src="js/firebase-config.js" defer></script>
+  <script src="js/i18n.js" defer></script>
   <script src="js/editor.js" defer></script>
 </body>
 </html>

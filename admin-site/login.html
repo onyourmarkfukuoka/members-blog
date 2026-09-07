@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>On Your Mark! Staff Blog Edit — ログイン / Login</title>
+  <title data-i18n="login.docTitle">On Your Mark! Staff Blog Edit — ログイン</title>
   <meta name="robots" content="noindex" />
 
   <!-- Fonts（公開サイトと同じ） -->
@@ -16,16 +16,18 @@
 <body class="auth-body">
 
   <main class="auth-card">
+    <div class="lang-toggle" role="group" data-i18n-aria-label="lang.group">
+      <button type="button" class="lang-toggle__btn" data-lang-btn="ja" aria-pressed="true">JP</button>
+      <button type="button" class="lang-toggle__btn" data-lang-btn="en" aria-pressed="false">EN</button>
+    </div>
+
     <span class="brand__mark">
       <img src="images/logo.svg" alt="On Your Mark! ロゴ" />
     </span>
 
-    <p class="auth-card__kicker">スタッフ専用 / Staff only</p>
+    <p class="auth-card__kicker" data-i18n="login.kicker">スタッフ専用</p>
     <h1 class="auth-card__title">On Your Mark!<br />Staff Blog Edit</h1>
-    <p class="auth-card__lead">
-      記事の作成・編集はスタッフ専用です。Googleアカウントでログインしてください。
-      <span class="en-b">Creating and editing posts is for staff only. Please sign in with your Google account.</span>
-    </p>
+    <p class="auth-card__lead" data-i18n="login.lead">記事の作成・編集はスタッフ専用です。Googleアカウントでログインしてください。</p>
 
     <button class="btn-google" id="googleLoginBtn" type="button">
       <span class="btn-google__icon" aria-hidden="true">
@@ -36,12 +38,12 @@
           <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.46 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.94l3.02 2.34C4.68 5.16 6.66 3.58 9 3.58z"/>
         </svg>
       </span>
-      <span>Googleでログイン<span class="en-b">Sign in with Google</span></span>
+      <span data-i18n="login.googleBtn">Googleでログイン</span>
     </button>
 
     <p class="auth-card__msg" id="authMsg" role="status" aria-live="polite"></p>
 
-    <a class="auth-card__back" href="../public-site/index.html">← 公開サイトへもどる / Back to blog</a>
+    <a class="auth-card__back" href="../public-site/index.html" data-i18n="login.back">← 公開サイトへもどる</a>
   </main>
 
   <!-- ===== Scripts (external only) =====
@@ -50,6 +52,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" defer></script>
   <script src="js/firebase-config.js" defer></script>
+  <script src="js/i18n.js" defer></script>
   <script src="js/login.js" defer></script>
 </body>
 </html>
