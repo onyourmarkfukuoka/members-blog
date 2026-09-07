@@ -37,9 +37,32 @@
       <div class="admin-header__user">
         <button class="btn-ghost" id="menuBtn" type="button" hidden>← メニュー <span class="en">Menu</span></button>
         <span class="welcome" id="welcome"></span>
+        <button class="btn-ghost" id="editNameBtn" type="button" aria-expanded="false" aria-controls="namePanel">表示名を変更 <span class="en">Change display name</span></button>
         <button class="btn-ghost" id="logoutBtn" type="button">ログアウト <span class="en">Log out</span></button>
       </div>
     </header>
+
+    <!-- ===== 表示名（ヘッダーのあいさつ用） ===== -->
+    <p class="welcome-hint" id="welcomeHint" hidden></p>
+
+    <div class="name-editor" id="namePanel" hidden>
+      <div class="name-editor__inner">
+        <label class="field__label" for="nameInput">表示名 <span class="en">Display name</span></label>
+        <p class="name-editor__note">
+          ヘッダーのあいさつに表示される名前です。記事ごとに入力する「編集者名」とは別です。
+          <span class="en-b">The name shown in the header greeting. This is separate from the "editor name" you enter on each post.</span>
+        </p>
+        <div class="name-editor__row">
+          <input class="field__input" type="text" id="nameInput" maxlength="40"
+                 autocomplete="off" placeholder="例：はるか / e.g. Haruka" />
+          <div class="name-editor__actions">
+            <button class="btn btn--primary" type="button" id="nameSaveBtn">保存 <span class="en">Save</span></button>
+            <button class="btn btn--ghost" type="button" id="nameCancelBtn">キャンセル <span class="en">Cancel</span></button>
+          </div>
+        </div>
+        <p class="name-editor__status" id="nameStatus" role="status" aria-live="polite"></p>
+      </div>
+    </div>
 
     <main class="admin-main" id="adminMain">
 

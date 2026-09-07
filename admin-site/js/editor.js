@@ -46,7 +46,16 @@ const el = (id) => document.getElementById(id);
 const authGate   = el("authGate");
 const adminApp   = el("adminApp");
 const welcome    = el("welcome");
+const welcomeHint = el("welcomeHint");
 const logoutBtn  = el("logoutBtn");
+
+/* ヘッダーの「表示名を変更」まわり */
+const editNameBtn   = el("editNameBtn");
+const namePanel     = el("namePanel");
+const nameInput     = el("nameInput");
+const nameSaveBtn   = el("nameSaveBtn");
+const nameCancelBtn = el("nameCancelBtn");
+const nameStatus    = el("nameStatus");
 
 const adminMain       = el("adminMain");
 const homeChoice      = el("homeChoice");
@@ -84,6 +93,11 @@ let currentUser = null;
 let editingId = null;      // 編集中ドキュメントID（新規なら null）
 let editingSnapshot = null; // 編集中ドキュメントの現在の中身
 
+/* ヘッダーのあいさつに使う表示名。
+   users/{uid}.displayName に保存された各自の呼び名。未設定なら null。
+   ※ 記事の editorName（記事ごとに入力）とは別物。 */
+let profileName = null;
+
 /* 写真スロット（順番＝表示順・最大2）
    { kind: "existing", url }            … すでにStorageにある写真
    { kind: "new", file, previewUrl }    … これからアップロードする写真 */
@@ -112,6 +126,113 @@ function setBusy(busy) {
   photoInput.disabled = busy;
   photoUploader.classList.toggle("is-busy", busy);
   postList.classList.toggle("is-busy", busy); // 保存・削除中は一覧の操作を止める
+}
+
+/* ----------------------- ヘッダーの表示名（あいさつ用） ----------------------- */
+/* あいさつに使う名前。優先順位：
+   1) 各自が設定した表示名（users/{uid}.displayName）
+   2) Google アカウントの名前 / メール（未設定時の暫定）
+   3) "スタッフ" */
+function greetingName() {
+  return profileName
+    || (currentUser && (currentUser.displayName || currentUser.email))
+    || "スタッフ";
+}
+
+/* ヘッダーの「◯◯さん ようこそ！」と選択画面の見出しをまとめて更新 */
+function updateGreetings() {
+  const name = greetingName();
+  welcome.textContent = `${name}さん ようこそ！ / Welcome, ${name}!`;
+  homeChoiceTitle.textContent = `${name}さん、何をしますか？ / Hi ${name}, what would you like to do?`;
+
+  // 表示名が未設定なら、設定をうながす一文を出す
+  const unset = !profileName;
+  welcomeHint.hidden = !unset;
+  if (unset) {
+    welcomeHint.textContent =
+      "表示名が未設定です。いまはGoogleアカウントの名前を表示しています。"
+      + "「表示名を変更」から自分の呼び名を設定できます。 / "
+      + "Display name not set — showing your Google account name for now. "
+      + "Use “Change display name” to set your own.";
+  }
+}
+
+/* ログイン中ユーザーの表示名を Firestore から読み込む */
+async function loadProfile() {
+  if (!currentUser) return;
+  try {
+    const snap = await db.collection("users").doc(currentUser.uid).get();
+    const d = (snap.exists && snap.data()) || {};
+    profileName =
+      typeof d.displayName === "string" && d.displayName.trim()
+        ? d.displayName.trim()
+        : null;
+  } catch (err) {
+    // 読めなくても挨拶自体は出す（暫定名にフォールバック）
+    console.error("loadProfile error:", err);
+    profileName = null;
+  }
+  updateGreetings();
+}
+
+function setNameStatus(text, isError = false) {
+  nameStatus.textContent = text || "";
+  nameStatus.classList.toggle("is-error", !!isError);
+}
+
+function openNameEditor() {
+  // 既存の表示名（無ければ Google の名前）を初期値に
+  nameInput.value = profileName || (currentUser && currentUser.displayName) || "";
+  setNameStatus("");
+  namePanel.hidden = false;
+  editNameBtn.setAttribute("aria-expanded", "true");
+  nameInput.focus();
+  nameInput.select();
+}
+
+function closeNameEditor() {
+  namePanel.hidden = true;
+  editNameBtn.setAttribute("aria-expanded", "false");
+  setNameStatus("");
+}
+
+function toggleNameEditor() {
+  namePanel.hidden ? openNameEditor() : closeNameEditor();
+}
+
+/* 表示名を保存（users/{uid} に merge）。保存できたら即反映。 */
+async function saveName() {
+  if (!currentUser) return;
+  const value = nameInput.value.trim();
+  if (!value) {
+    setNameStatus("表示名を入力してください。 / Please enter a display name.", true);
+    return;
+  }
+  if (value.length > 40) {
+    setNameStatus("表示名は40文字以内にしてください。 / Please keep it to 40 characters or fewer.", true);
+    return;
+  }
+
+  nameSaveBtn.disabled = true;
+  nameCancelBtn.disabled = true;
+  setNameStatus("保存しています… / Saving…");
+
+  try {
+    await db.collection("users").doc(currentUser.uid).set(
+      { displayName: value, updatedAt: serverTimestamp() },
+      { merge: true }
+    );
+    profileName = value;
+    updateGreetings();
+    setNameStatus("保存しました。 / Saved.");
+    setTimeout(closeNameEditor, 900);
+  } catch (err) {
+    console.error("saveName error:", err);
+    setNameStatus("保存に失敗しました。もう一度お試しください。 / Save failed. Please try again.", true);
+  } finally {
+    nameSaveBtn.disabled = false;
+    nameCancelBtn.disabled = false;
+  }
 }
 
 /* ----------------------- 写真スロット ----------------------- */
@@ -198,8 +319,7 @@ function setView(view) {
 }
 
 function showHome() {
-  const name = (currentUser && (currentUser.displayName || currentUser.email)) || "スタッフ";
-  homeChoiceTitle.textContent = `${name}さん、何をしますか？ / Hi ${name}, what would you like to do?`;
+  updateGreetings();
   setView("home");
 }
 
@@ -496,12 +616,12 @@ auth.onAuthStateChanged(
 
     // --- 認証OK。まず「確認しています…」の表示を消す ---
     currentUser = user;
-    const name = user.displayName || user.email || "スタッフ";
-    welcome.textContent = `${name}さん ようこそ！ / Welcome, ${name}!`;
+    updateGreetings();   // まず暫定表示（Googleアカウントの名前）
 
     authGate.hidden = true;
     adminApp.hidden = false;
 
+    loadProfile();    // 保存済みの表示名を読み込んで、あいさつを差し替える
     resetForm();
     loadPosts();      // 一覧は裏で用意しておく（自分の記事だけ）
     showHome();       // まずは「新規作成 / 既存を編集」の選択画面を出す
@@ -531,6 +651,14 @@ setTimeout(() => {
 chooseNewBtn.addEventListener("click", startNew);
 chooseEditBtn.addEventListener("click", startEdit);
 menuBtn.addEventListener("click", showHome);
+
+editNameBtn.addEventListener("click", toggleNameEditor);
+nameSaveBtn.addEventListener("click", saveName);
+nameCancelBtn.addEventListener("click", closeNameEditor);
+nameInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); saveName(); }
+  if (e.key === "Escape") closeNameEditor();
+});
 newPostBtn.addEventListener("click", startNew);
 saveDraftBtn.addEventListener("click", () => save("draft"));
 publishBtn.addEventListener("click", () => save("published"));

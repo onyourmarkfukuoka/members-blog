@@ -184,6 +184,42 @@ body {
 }
 .btn-ghost:hover { background: var(--water); }
 .btn-ghost:disabled { opacity: .5; cursor: default; }
+.btn-ghost[aria-expanded="true"] { background: var(--water); border-color: rgba(82,182,232,.45); }
+
+/* ---------- 表示名エディタ（ヘッダー下） ---------- */
+.welcome-hint {
+  max-width: var(--maxw);
+  margin: 10px auto 0;
+  padding: 0 22px;
+  font-size: .78rem; line-height: 1.6; color: var(--ink-soft);
+}
+.name-editor {
+  max-width: var(--maxw);
+  margin: 12px auto 0;
+  padding: 0 22px;
+}
+.name-editor__inner {
+  background: var(--foam);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  padding: 16px 18px;
+  display: grid; gap: 8px;
+}
+.name-editor__note {
+  margin: 0; font-size: .78rem; line-height: 1.6; color: var(--ink-soft);
+}
+.name-editor__row {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start;
+  margin-top: 2px;
+}
+.name-editor__row .field__input { flex: 1 1 220px; }
+.name-editor__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.name-editor__actions .btn { padding: 10px 18px; font-size: .86rem; }
+.name-editor__status {
+  min-height: 1.2em; margin: 0; font-size: .82rem; color: var(--ink-soft);
+}
+.name-editor__status.is-error { color: var(--danger); font-weight: 700; }
 
 .admin-main {
   max-width: var(--maxw);
