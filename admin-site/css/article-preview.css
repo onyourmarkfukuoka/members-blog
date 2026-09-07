@@ -1,0 +1,128 @@
+/* =========================================================
+   On Your Mark! Staff Blog Edit — 投稿前プレビュー
+   ---------------------------------------------------------
+   ・.preview-surface の中身は「公開サイトの記事詳細ページ」と
+     同じ見た目。下の .article* ルールは
+       public-site/css/style.css の「Article」セクション
+     をそのまま写したものです（本番と差を出さないため。
+     公開サイト側を直したら、こちらも必ず合わせること）。
+   ・色・フォントの変数（--ink / --sky-deep / --water /
+     --shadow-sm / --font-jp / --font-mono …）は
+     css/style.css の :root で定義済み（公開サイトと同値）。
+   ========================================================= */
+
+/* ---------- オーバーレイ／モーダル ---------- */
+.preview-overlay {
+  position: fixed; inset: 0; z-index: 60;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px 16px;
+  background: rgba(14, 46, 69, .55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.preview-modal {
+  width: min(820px, 100%);
+  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
+  display: flex; flex-direction: column;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  overflow: hidden;                 /* 角丸で中身をクリップ */
+}
+
+.preview-modal__bar {
+  flex: none;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 13px 16px 13px 18px;
+  background: var(--foam);
+  border-bottom: 1px solid var(--line);
+}
+.preview-modal__label {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: .62rem; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--sky-deep);
+}
+.preview-modal__note {
+  flex: none;
+  margin: 0;
+  padding: 10px 22px;
+  font-size: .76rem; line-height: 1.6; color: var(--ink-soft);
+  background: var(--water);
+}
+
+.preview-modal__scroll {
+  flex: 1 1 auto;
+  min-height: 0;                    /* flex 子が縮んでスクロールできるように */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* =========================================================
+   ↓↓↓ ここから下は public-site/css/style.css の「Article」を写したもの ↓↓↓
+   （.preview-surface 配下にスコープしているだけで、値は本番と同一）
+   ========================================================= */
+.preview-surface {
+  max-width: 760px;            /* 公開サイトの本文幅（--maxw: 760px）にそろえる */
+  margin: 0 auto;
+  padding: 20px 22px 30px;     /* .wrap の左右パディング + article-wrap 相当 */
+  line-height: 1.85;           /* 公開サイト body の行間 */
+}
+
+.preview-surface .article__meta {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
+}
+.preview-surface .stamp {
+  font-family: var(--font-mono); font-size: .74rem; font-weight: 700;
+  color: var(--sky-deep); letter-spacing: .02em;
+}
+.preview-surface .article__editor {
+  font-family: var(--font-jp); font-size: .82rem; color: var(--ink-soft);
+}
+.preview-surface .article__editor::before {
+  content: var(--article-editor-prefix, "編集 ");
+  color: var(--sky-deep);
+}
+.preview-surface .article__title {
+  font-family: var(--font-jp); font-weight: 900;
+  font-size: clamp(1.6rem, 6vw, 2.3rem); line-height: 1.4;
+  margin: 0 0 22px;
+}
+
+.preview-surface .article__photos { display: grid; gap: 10px; margin: 0 0 26px; }
+.preview-surface .article__photos:not(:empty) { grid-template-columns: 1fr; }
+.preview-surface .article__photos img {
+  width: 100%; max-width: 100%; border-radius: 16px; display: block;
+  background: var(--water); box-shadow: var(--shadow-sm);
+}
+
+/* 1枚：中央寄せ。縦長でも画面いっぱいに伸ばさない */
+.preview-surface .article__photos.count-1 { justify-items: center; }
+.preview-surface .article__photos.count-1 img {
+  width: auto; max-width: 520px; max-height: 56vh; object-fit: contain;
+}
+
+/* 2枚：横並び。高さを揃えてトリミング表示 */
+.preview-surface .article__photos.count-2 { grid-template-columns: 1fr 1fr; }
+.preview-surface .article__photos.count-2 img {
+  aspect-ratio: 4 / 3; max-height: 42vh; object-fit: cover;
+}
+
+.preview-surface .article__body { font-size: 1.02rem; color: #1c3a50; }
+.preview-surface .article__body p { margin: 0 0 1.3em; }
+
+@media (max-width: 560px) {
+  /* スマホ：2枚でも縦積みにして各写真が大きくなりすぎないよう抑える */
+  .preview-surface .article__photos.count-2 { grid-template-columns: 1fr; }
+  .preview-surface .article__photos.count-2 img { aspect-ratio: 3 / 2; max-height: 44vh; }
+  .preview-surface .article__photos.count-1 img { max-width: 100%; max-height: 48vh; }
+}
+/* ↑↑↑ ここまで public-site と同一 ↑↑↑ */
+
+@media (prefers-reduced-motion: reduce) {
+  .preview-overlay { backdrop-filter: none; -webkit-backdrop-filter: none; }
+}

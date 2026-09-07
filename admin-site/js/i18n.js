@@ -89,8 +89,14 @@
       "field.photos": "写真（最大2枚）",
       "field.body": "本文",
       "field.body.ph": "ここに本文を書きます。段落は空行で区切ってください。",
+      "form.preview": "プレビュー",
       "form.saveDraft": "一時保存",
       "form.publish": "公開",
+
+      "preview.heading": "プレビュー（公開時の見え方）",
+      "preview.note": "表示の確認用です。保存・公開はされません。",
+      "preview.close": "閉じる",
+      "preview.editorPrefix": "編集 ",
 
       "cat.camp": "キャンプ当日",
       "cat.meeting": "ミーティング",
@@ -196,8 +202,14 @@
       "field.photos": "Photos (up to 2)",
       "field.body": "Body",
       "field.body.ph": "Write the body here. Separate paragraphs with a blank line.",
+      "form.preview": "Preview",
       "form.saveDraft": "Save draft",
       "form.publish": "Publish",
+
+      "preview.heading": "Preview (how it will look once published)",
+      "preview.note": "For checking the look only — nothing is saved or published.",
+      "preview.close": "Close",
+      "preview.editorPrefix": "Editor ",
 
       "cat.camp": "Camp day",
       "cat.meeting": "Meeting",

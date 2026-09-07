@@ -89,6 +89,17 @@ const photoHint     = el("photoHint");
 const postList  = el("postList");
 const listEmpty = el("listEmpty");
 
+/* 投稿前プレビュー（公開サイトの記事詳細と同じ見た目・保存はしない） */
+const previewBtn     = el("previewBtn");
+const previewOverlay = el("previewOverlay");
+const previewClose   = el("previewClose");
+const previewSurface = el("previewSurface");
+const pvDate   = el("pvDate");
+const pvEditor = el("pvEditor");
+const pvTitle  = el("pvTitle");
+const pvPhotos = el("pvPhotos");
+const pvBody   = el("pvBody");
+
 /* ----------------------- 状態 ----------------------- */
 let currentUser = null;
 let editingId = null;      // 編集中ドキュメントID（新規なら null）
@@ -142,6 +153,7 @@ function renderFormStatus() {
 function setBusy(busy) {
   saveDraftBtn.disabled = busy;
   publishBtn.disabled = busy;
+  previewBtn.disabled = busy;
   newPostBtn.disabled = busy;
   photoInput.disabled = busy;
   photoUploader.classList.toggle("is-busy", busy);
@@ -462,6 +474,64 @@ function validate(v) {
   return null;
 }
 
+/* ----------------------- 投稿前プレビュー ----------------------- */
+/* いまフォームに入っている内容で、公開サイトの「記事詳細」と同じ見た目を組み立てる。
+   ・公開サイトの app.js openArticle() と同じ手順（日付・編集者名・タイトル・写真・本文）
+   ・写真はまだアップしていない選択中のものも、既存の previewUrl でそのまま表示
+   ・保存・公開は一切しない（見た目確認だけ） */
+function buildPreview() {
+  const v = readForm();
+
+  pvDate.textContent = formatDate(v.date);
+  pvDate.hidden = !v.date;
+
+  pvEditor.textContent = v.editorName;
+  pvEditor.hidden = !v.editorName;
+  // 編集者名の接頭辞（"編集 " / "Editor "）を言語に合わせる（CSS の content 用に引用符付き）
+  previewSurface.style.setProperty(
+    "--article-editor-prefix",
+    JSON.stringify(t("preview.editorPrefix"))
+  );
+
+  pvTitle.textContent = v.title;
+  pvTitle.hidden = !v.title;
+
+  // 写真：公開サイトと同じく最大2枚。1枚→count-1／2枚→count-2
+  const pics = photoSlots
+    .slice(0, MAX_PHOTOS)
+    .map((slot) => (slot.kind === "existing" ? slot.url : slot.previewUrl));
+  pvPhotos.innerHTML = "";
+  pvPhotos.className =
+    "article__photos" + (pics.length === 2 ? " count-2" : pics.length === 1 ? " count-1" : "");
+  pics.forEach((src) => {
+    const img = document.createElement("img");
+    img.src = src;
+    img.alt = v.title || "";
+    pvPhotos.appendChild(img);
+  });
+
+  // 本文：空行で段落分け（公開サイトと同じ）
+  pvBody.innerHTML = "";
+  (v.body || "").split(/\n{2,}/).forEach((para) => {
+    const pEl = document.createElement("p");
+    pEl.textContent = para.replace(/\n/g, " ");
+    pvBody.appendChild(pEl);
+  });
+}
+
+function openPreview() {
+  buildPreview();
+  previewOverlay.hidden = false;
+  document.body.style.overflow = "hidden"; // 背後をスクロールさせない
+  previewClose.focus();
+}
+
+function closePreview() {
+  previewOverlay.hidden = true;
+  document.body.style.overflow = "";
+  previewBtn.focus();
+}
+
 /* ----------------------- 保存（下書き / 公開 共通） ----------------------- */
 async function save(status) {
   const v = readForm();
@@ -670,6 +740,8 @@ window.addEventListener("i18n:change", () => {
   renderPhotos();
   renderPostList();
   if (gateErrShown) authGate.innerHTML = "<p>" + t("gate.err") + "</p>";
+  // プレビューを開いたまま切り替えたら、接頭辞なども含めて作り直す
+  if (!previewOverlay.hidden) buildPreview();
 });
 
 /* ----------------------- ログイン状態の監視 ----------------------- */
@@ -733,6 +805,15 @@ nameInput.addEventListener("keydown", (e) => {
 newPostBtn.addEventListener("click", startNew);
 saveDraftBtn.addEventListener("click", () => save("draft"));
 publishBtn.addEventListener("click", () => save("published"));
+
+previewBtn.addEventListener("click", openPreview);
+previewClose.addEventListener("click", closePreview);
+previewOverlay.addEventListener("click", (e) => {
+  if (e.target === previewOverlay) closePreview(); // 背景（暗い部分）クリックで閉じる
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !previewOverlay.hidden) closePreview();
+});
 
 photoInput.addEventListener("change", (e) => {
   addFiles(e.target.files);

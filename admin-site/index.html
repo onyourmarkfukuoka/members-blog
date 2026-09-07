@@ -12,6 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/article-preview.css" />
 </head>
 <body>
 
@@ -140,6 +141,7 @@
           <p class="form-status" id="formStatus" role="status" aria-live="polite"></p>
 
           <div class="form-actions">
+            <button class="btn btn--ghost" type="button" id="previewBtn" data-i18n="form.preview">プレビュー</button>
             <button class="btn btn--ghost" type="button" id="saveDraftBtn" data-i18n="form.saveDraft">一時保存</button>
             <button class="btn btn--primary" type="button" id="publishBtn" data-i18n="form.publish">公開</button>
           </div>
@@ -155,6 +157,30 @@
       </section>
 
     </main>
+  </div>
+
+  <!-- ===== 投稿前プレビュー（公開サイトの記事詳細と同じ見た目・保存はしない） ===== -->
+  <div class="preview-overlay" id="previewOverlay" hidden>
+    <div class="preview-modal" role="dialog" aria-modal="true" aria-labelledby="previewHeading">
+      <div class="preview-modal__bar">
+        <p class="preview-modal__label" id="previewHeading" data-i18n="preview.heading">プレビュー（公開時の見え方）</p>
+        <button class="btn-ghost" type="button" id="previewClose" data-i18n="preview.close">閉じる</button>
+      </div>
+      <p class="preview-modal__note" data-i18n="preview.note">表示の確認用です。保存・公開はされません。</p>
+      <div class="preview-modal__scroll">
+        <div class="preview-surface" id="previewSurface">
+          <article class="article">
+            <div class="article__meta">
+              <time class="stamp" id="pvDate"></time>
+              <span class="article__editor" id="pvEditor"></span>
+            </div>
+            <h1 class="article__title" id="pvTitle"></h1>
+            <div class="article__photos" id="pvPhotos"><!-- editor.js が入れます --></div>
+            <div class="article__body" id="pvBody"><!-- editor.js が入れます --></div>
+          </article>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ===== Scripts (external only) =====
