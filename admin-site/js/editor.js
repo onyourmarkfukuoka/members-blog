@@ -24,6 +24,15 @@
    users/{uid}      … { displayName, updatedAt }（本人だけ読み書き可）
    ========================================================= */
 
+/* 想定外のエラーを必ずコンソールに残す（スマホでの不具合調査用）。
+   これがあると「押しても反応しない」の原因（例外で処理が止まっている等）が特定しやすい。 */
+window.addEventListener("error", function (e) {
+  console.error("[admin] uncaught error:", e && e.message, "@", (e && e.filename) + ":" + (e && e.lineno));
+});
+window.addEventListener("unhandledrejection", function (e) {
+  console.error("[admin] unhandled promise rejection:", e && e.reason);
+});
+
 const auth = firebase.auth();
 const db = firebase.firestore();
 const storage = firebase.storage();
@@ -520,16 +529,21 @@ function buildPreview() {
 }
 
 function openPreview() {
-  buildPreview();
+  // 先にモーダルを開く（組み立てで例外が出ても「押しても反応しない」を避ける）
   previewOverlay.hidden = false;
   document.body.style.overflow = "hidden"; // 背後をスクロールさせない
-  previewClose.focus();
+  try {
+    buildPreview();
+  } catch (err) {
+    console.error("[admin] buildPreview error:", err);
+  }
+  try { previewClose.focus({ preventScroll: true }); } catch (e) { /* 一部ブラウザは preventScroll 未対応 */ }
 }
 
 function closePreview() {
   previewOverlay.hidden = true;
   document.body.style.overflow = "";
-  previewBtn.focus();
+  try { previewBtn.focus({ preventScroll: true }); } catch (e) { /* noop */ }
 }
 
 /* ----------------------- 保存（下書き / 公開 共通） ----------------------- */
@@ -734,14 +748,18 @@ function highlightSelected() {
 
 /* ----------------------- 言語切り替え時：動的テキストを出し直す ----------------------- */
 window.addEventListener("i18n:change", () => {
-  updateGreetings();
-  renderFormStatus();
-  renderNameStatus();
-  renderPhotos();
-  renderPostList();
-  if (gateErrShown) authGate.innerHTML = "<p>" + t("gate.err") + "</p>";
-  // プレビューを開いたまま切り替えたら、接頭辞なども含めて作り直す
-  if (!previewOverlay.hidden) buildPreview();
+  try {
+    updateGreetings();
+    renderFormStatus();
+    renderNameStatus();
+    renderPhotos();
+    renderPostList();
+    if (gateErrShown) authGate.innerHTML = "<p>" + t("gate.err") + "</p>";
+    // プレビューを開いたまま切り替えたら、接頭辞なども含めて作り直す
+    if (previewOverlay && !previewOverlay.hidden) buildPreview();
+  } catch (err) {
+    console.error("[admin] i18n:change handler error:", err);
+  }
 });
 
 /* ----------------------- ログイン状態の監視 ----------------------- */
@@ -806,17 +824,25 @@ newPostBtn.addEventListener("click", startNew);
 saveDraftBtn.addEventListener("click", () => save("draft"));
 publishBtn.addEventListener("click", () => save("published"));
 
-previewBtn.addEventListener("click", openPreview);
-previewClose.addEventListener("click", closePreview);
-previewOverlay.addEventListener("click", (e) => {
-  if (e.target === previewOverlay) closePreview(); // 背景（暗い部分）クリックで閉じる
+/* プレビュー関連は document 委譲で拾う。
+   （個別 addEventListener が何かの拍子に外れても・要素が差し替わっても反応するように） */
+document.addEventListener("click", (e) => {
+  const node = e.target;
+  if (!node || !node.closest) return;
+  if (node.closest("#previewBtn"))   { e.preventDefault(); openPreview();  return; }
+  if (node.closest("#previewClose")) { e.preventDefault(); closePreview(); return; }
+  if (node === previewOverlay)       { closePreview(); }               // 背景クリックで閉じる
 });
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !previewOverlay.hidden) closePreview();
+  if (e.key === "Escape" && previewOverlay && !previewOverlay.hidden) closePreview();
 });
 
 photoInput.addEventListener("change", (e) => {
-  addFiles(e.target.files);
+  try {
+    addFiles(e.target.files);
+  } catch (err) {
+    console.error("[admin] addFiles error:", err);
+  }
   e.target.value = ""; // 同じファイルを選び直せるようにクリア
 });
 
@@ -828,3 +854,10 @@ logoutBtn.addEventListener("click", async () => {
     console.error("signOut error:", err);
   }
 });
+
+/* すべての初期化が終わったあとに、もう一度だけ翻訳をあて直す。
+   i18n.js の初回適用と editor.js の起動の順序ズレ（スクリプトの再取得・
+   キャッシュずれ等）があっても、data-i18n が確実に反映されるようにする保険。 */
+if (window.I18N && typeof window.I18N.apply === "function") {
+  window.I18N.apply(document);
+}

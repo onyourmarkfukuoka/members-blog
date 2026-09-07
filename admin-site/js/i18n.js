@@ -274,16 +274,22 @@
   var current = readStored();
 
   /* ----------------------- 文字列の取得 ----------------------- */
-  /* キー → 現在言語の文字列。無ければ ja → キーそのもの の順にフォールバック */
-  function raw(key) {
+  /* キー → 現在言語の文字列。見つからなければ ja、それも無ければ undefined。 */
+  function lookup(key) {
     var table = STRINGS[current] || {};
     if (Object.prototype.hasOwnProperty.call(table, key)) return table[key];
     if (STRINGS.ja && Object.prototype.hasOwnProperty.call(STRINGS.ja, key)) return STRINGS.ja[key];
-    return key;
+    return undefined;
   }
-  /* {name} などのプレースホルダを置換して返す */
+  /* {name} などのプレースホルダを置換して返す。
+     動的取得（window.I18N.t）は文字列を必ず返す必要があるので、
+     最後の手段としてキー文字列を返す。 */
   function t(key, params) {
-    var s = raw(key);
+    var s = lookup(key);
+    if (s === undefined) {
+      if (typeof console !== "undefined") console.warn("[i18n] missing key:", key);
+      s = key;
+    }
     if (params) {
       Object.keys(params).forEach(function (k) {
         s = s.split("{" + k + "}").join(String(params[k]));
@@ -293,20 +299,27 @@
   }
 
   /* ----------------------- 画面への反映 ----------------------- */
+  /* 未定義キー（辞書が古い等）のときは、HTMLに書いてある既定の文言を
+     そのまま残す（"form.preview" のような生キーを絶対に画面に出さない）。 */
   function applyStatic(root) {
     var scope = root || document;
+    var v;
 
     scope.querySelectorAll("[data-i18n]").forEach(function (elm) {
-      elm.textContent = t(elm.getAttribute("data-i18n"));
+      v = lookup(elm.getAttribute("data-i18n"));
+      if (v != null) elm.textContent = v;
     });
     scope.querySelectorAll("[data-i18n-html]").forEach(function (elm) {
-      elm.innerHTML = t(elm.getAttribute("data-i18n-html"));
+      v = lookup(elm.getAttribute("data-i18n-html"));
+      if (v != null) elm.innerHTML = v;
     });
     scope.querySelectorAll("[data-i18n-placeholder]").forEach(function (elm) {
-      elm.setAttribute("placeholder", t(elm.getAttribute("data-i18n-placeholder")));
+      v = lookup(elm.getAttribute("data-i18n-placeholder"));
+      if (v != null) elm.setAttribute("placeholder", v);
     });
     scope.querySelectorAll("[data-i18n-aria-label]").forEach(function (elm) {
-      elm.setAttribute("aria-label", t(elm.getAttribute("data-i18n-aria-label")));
+      v = lookup(elm.getAttribute("data-i18n-aria-label"));
+      if (v != null) elm.setAttribute("aria-label", v);
     });
   }
 
@@ -344,6 +357,15 @@
     setLang(btn.getAttribute("data-lang-btn"));
   });
 
-  /* 初期適用（defer で読み込むので DOM は構築済み）。保存はしない。 */
+  /* 初期適用（defer で読み込むので DOM は構築済みのはず）。保存はしない。 */
   setLang(current, { persist: false });
+
+  /* 保険：DOM がまだなら、構築完了時にもう一度あてる。
+     さらに、あとから足された要素（動的生成）も拾えるよう window.I18N.apply が使える。 */
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function () {
+      applyStatic(document);
+      syncToggle();
+    });
+  }
 })();
