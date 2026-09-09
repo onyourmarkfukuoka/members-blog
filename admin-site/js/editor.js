@@ -7,7 +7,7 @@
    やること：
    - ログイン状態を監視。未ログインなら login.html へ送る
    - 上部に「◯◯さん ようこそ!」（users/{uid}.displayName ＞ Googleの名前）
-   - フォーム：タイトル / 日付 / 編集者名 / カテゴリ / 写真（最大2枚） / 本文
+   - フォーム：タイトル / 日付 / 編集者名 / カテゴリ / 写真（最大5枚） / 本文
      ・「編集者名」の初期値は、ヘッダーの表示名（profileName）
    - 写真は保存・公開時に Firebase Storage へアップロードし、URLを photos に保存
    - 「一時保存」= status:"draft"、「公開」= status:"published"
@@ -16,7 +16,7 @@
    Firestore ドキュメント（コレクション posts / 1記事1ドキュメント）
      title, editorName, date, body,
      category     … "camp" | "meeting" | "other"（必須／初期値 "other"）
-     photos       … 最大2件。Storage の posts/{postId}/ にあげた画像のダウンロードURL配列
+     photos       … 最大5件。Storage の posts/{postId}/ にあげた画像のダウンロードURL配列
      status       … "draft" | "published"
      authorUid    … 最初に作成したユーザーの uid
      createdAt, updatedAt, publishedAt … サーバータイムスタンプ
@@ -38,7 +38,7 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp;
 
-const MAX_PHOTOS = 2; // 写真は最大2枚まで
+const MAX_PHOTOS = 5; // 写真は最大5枚まで
 
 /* 文言取得のショートカット（js/i18n.js） */
 const t = (key, params) => (window.I18N ? window.I18N.t(key, params) : key);
@@ -118,7 +118,7 @@ let editingSnapshot = null; // 編集中ドキュメントの現在の中身
    users/{uid}.displayName に保存された各自の呼び名。未設定なら null。 */
 let profileName = null;
 
-/* 写真スロット（順番＝表示順・最大2）
+/* 写真スロット（順番＝表示順・最大5）
    { kind: "existing", url }            … すでにStorageにある写真
    { kind: "new", file, previewUrl }    … これからアップロードする写真 */
 let photoSlots = [];
@@ -483,6 +483,118 @@ function validate(v) {
   return null;
 }
 
+/* ----------------------- 写真カルーセル（公開サイトと共通の作り） ----------------------- */
+/* 0枚 → 非表示 ／ 1枚 → そのまま中央に1枚 ／ 複数 → 横スワイプ（スマホ）＋
+   左右の矢印（PC）＋ドットインジケーターで切り替えるカルーセル。
+   labels = { region, prev, next, goto(n) } は表示言語に合わせて呼び出し側で渡す。
+   ※ public-site/js/app.js の同名関数と同じ実装（本番と見た目・挙動をそろえる）。 */
+function carouselChevron(dir) {
+  const d = dir === "prev" ? "M15 5l-7 7 7 7" : "M9 5l7 7-7 7";
+  return `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+}
+
+function buildPhotoCarousel(container, urls, altText, labels) {
+  const pics = (Array.isArray(urls) ? urls : []).filter(Boolean).slice(0, MAX_PHOTOS);
+
+  container.innerHTML = "";
+  container.className = "article__photos";
+  container.hidden = pics.length === 0;
+  if (pics.length === 0) return;
+
+  // 1枚：カルーセルなし（従来どおり中央に大きく1枚）
+  if (pics.length === 1) {
+    container.classList.add("count-1");
+    const only = document.createElement("img");
+    only.src = pics[0];
+    only.alt = altText || "";
+    only.loading = "lazy";
+    container.appendChild(only);
+    return;
+  }
+
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const carousel = document.createElement("div");
+  carousel.className = "carousel";
+
+  const track = document.createElement("div");
+  track.className = "carousel__track";
+  track.setAttribute("role", "group");
+  track.setAttribute("aria-label", labels.region);
+
+  pics.forEach((src, i) => {
+    const slide = document.createElement("div");
+    slide.className = "carousel__slide";
+    const img = document.createElement("img");
+    img.src = src;
+    img.alt = altText ? `${altText}（${i + 1}/${pics.length}）` : "";
+    img.loading = i === 0 ? "eager" : "lazy";
+    slide.appendChild(img);
+    track.appendChild(slide);
+  });
+
+  const makeArrow = (dir, label) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = `carousel__arrow carousel__arrow--${dir}`;
+    b.setAttribute("aria-label", label);
+    b.innerHTML = carouselChevron(dir);
+    return b;
+  };
+  const prev = makeArrow("prev", labels.prev);
+  const next = makeArrow("next", labels.next);
+  carousel.append(prev, track, next);
+
+  const dots = document.createElement("div");
+  dots.className = "carousel__dots";
+  dots.setAttribute("role", "group");
+  dots.setAttribute("aria-label", labels.region);
+  const dotEls = pics.map((_, i) => {
+    const d = document.createElement("button");
+    d.type = "button";
+    d.className = "carousel__dot";
+    d.setAttribute("aria-label", labels.goto(i + 1));
+    dots.appendChild(d);
+    return d;
+  });
+
+  container.append(carousel, dots);
+
+  let current = -1;
+  const clampIdx = (i) => Math.max(0, Math.min(pics.length - 1, i));
+  const sync = (i) => {
+    i = clampIdx(i);
+    if (i === current) return;
+    current = i;
+    dotEls.forEach((d, k) => d.classList.toggle("is-active", k === i));
+    prev.disabled = i === 0;
+    next.disabled = i === pics.length - 1;
+  };
+  const go = (i) => {
+    i = clampIdx(i);
+    const w = track.clientWidth || 1;
+    track.scrollTo({ left: i * w, behavior: reduce ? "auto" : "smooth" });
+    sync(i);
+  };
+
+  prev.addEventListener("click", () => go(current - 1));
+  next.addEventListener("click", () => go(current + 1));
+  dotEls.forEach((d, i) => d.addEventListener("click", () => go(i)));
+
+  let ticking = false;
+  track.addEventListener("scroll", () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      ticking = false;
+      const w = track.clientWidth || 1;
+      sync(Math.round(track.scrollLeft / w));
+    });
+  }, { passive: true });
+
+  sync(0);
+}
+
 /* ----------------------- 投稿前プレビュー ----------------------- */
 /* いまフォームに入っている内容で、公開サイトの「記事詳細」と同じ見た目を組み立てる。
    ・公開サイトの app.js openArticle() と同じ手順（日付・編集者名・タイトル・写真・本文）
@@ -505,18 +617,16 @@ function buildPreview() {
   pvTitle.textContent = v.title;
   pvTitle.hidden = !v.title;
 
-  // 写真：公開サイトと同じく最大2枚。1枚→count-1／2枚→count-2
+  // 写真：公開サイトの記事詳細とまったく同じカルーセル表示（最大5枚）。
+  // 未アップロードの選択中写真は既存の previewUrl でそのまま表示。
   const pics = photoSlots
     .slice(0, MAX_PHOTOS)
     .map((slot) => (slot.kind === "existing" ? slot.url : slot.previewUrl));
-  pvPhotos.innerHTML = "";
-  pvPhotos.className =
-    "article__photos" + (pics.length === 2 ? " count-2" : pics.length === 1 ? " count-1" : "");
-  pics.forEach((src) => {
-    const img = document.createElement("img");
-    img.src = src;
-    img.alt = v.title || "";
-    pvPhotos.appendChild(img);
+  buildPhotoCarousel(pvPhotos, pics, v.title, {
+    region: t("carousel.region"),
+    prev: t("carousel.prev"),
+    next: t("carousel.next"),
+    goto: (n) => t("carousel.goto", { n })
   });
 
   // 本文：空行で段落分け（公開サイトと同じ）
@@ -560,7 +670,7 @@ async function save(status) {
   const postId = docRef.id;
 
   try {
-    // 1) 写真：既存はURLをそのまま、新規は Storage にアップロードしてURL化（最大2枚）
+    // 1) 写真：既存はURLをそのまま、新規は Storage にアップロードしてURL化（最大5枚）
     const photos = [];
     for (const slot of photoSlots.slice(0, MAX_PHOTOS)) {
       if (slot.kind === "existing") {
@@ -590,7 +700,7 @@ async function save(status) {
       date: v.date,
       category: v.category, // "camp" | "meeting" | "other"（必ず含める）
       body: v.body,
-      photos: photos,       // 最大2件のダウンロードURL
+      photos: photos,       // 最大5件のダウンロードURL
       status: status,
       updatedAt: serverTimestamp()
     };

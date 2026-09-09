@@ -390,24 +390,72 @@ body {
   font-size: clamp(1.6rem, 6vw, 2.3rem); line-height: 1.4;
   margin: 0 0 22px;
 }
-.article__photos { display: grid; gap: 10px; margin: 0 0 26px; }
-.article__photos:not(:empty) { grid-template-columns: 1fr; }
-.article__photos img {
-  width: 100%; max-width: 100%; border-radius: 16px; display: block;
-  background: var(--water); box-shadow: var(--shadow-sm);
-}
+.article__photos { margin: 0 0 26px; }
 
-/* 1枚：中央寄せ。縦長でも画面いっぱいに伸ばさない */
-.article__photos.count-1 { justify-items: center; }
+/* 1枚：中央寄せ。縦長でも画面いっぱいに伸ばさない（従来どおり） */
+.article__photos.count-1 { display: grid; justify-items: center; }
 .article__photos.count-1 img {
-  width: auto; max-width: 520px; max-height: 56vh; object-fit: contain;
+  width: auto; max-width: 520px; max-height: 56vh;
+  object-fit: contain;
+  border-radius: 16px; background: var(--water); box-shadow: var(--shadow-sm);
 }
 
-/* 2枚：横並び。高さを揃えてトリミング表示 */
-.article__photos.count-2 { grid-template-columns: 1fr 1fr; }
-.article__photos.count-2 img {
-  aspect-ratio: 4 / 3; max-height: 42vh; object-fit: cover;
+/* 複数枚：横スワイプ（スマホ）／左右の矢印（PC）で切り替えるカルーセル */
+.carousel { position: relative; }
+.carousel__track {
+  display: flex;
+  overflow-x: auto; overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;                 /* Firefox：スクロールバーを隠す */
+  border-radius: 16px;
+  background: var(--water);
+  box-shadow: var(--shadow-sm);
+  height: clamp(240px, 56vh, 460px);     /* 先日調整した最大高さ相当。大きくなりすぎない */
 }
+.carousel__track::-webkit-scrollbar { display: none; }   /* Chrome / Safari */
+.carousel__slide {
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  display: flex; align-items: center; justify-content: center;
+}
+.carousel__slide img {
+  max-width: 100%; max-height: 100%;
+  width: auto; height: auto;
+  object-fit: contain; display: block;
+}
+
+/* 矢印：ポインタのある端末（PC）だけ表示。タッチはスワイプで操作 */
+.carousel__arrow {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, .92); color: var(--sky-deep);
+  display: none; place-items: center; cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background .18s ease, color .18s ease, opacity .18s ease;
+}
+.carousel__arrow--prev { left: 10px; }
+.carousel__arrow--next { right: 10px; }
+.carousel__arrow:hover { background: #fff; color: var(--ink); }
+.carousel__arrow:disabled { opacity: .3; cursor: default; }
+@media (hover: hover) and (pointer: fine) {
+  .carousel__arrow { display: grid; }
+}
+
+/* ドットインジケーター（● ○ ○） */
+.carousel__dots {
+  display: flex; justify-content: center; align-items: center;
+  gap: 7px; margin-top: 12px;
+}
+.carousel__dot {
+  width: 8px; height: 8px; padding: 0; border: 0; border-radius: 50%;
+  background: rgba(14, 46, 69, .22); cursor: pointer;
+  transition: background .18s ease, transform .18s ease;
+}
+.carousel__dot:hover { background: rgba(14, 46, 69, .42); }
+.carousel__dot.is-active { background: var(--sky-deep); transform: scale(1.4); }
 .article__body { font-size: 1.02rem; color: #1c3a50; }
 .article__body p { margin: 0 0 1.3em; }
 
@@ -450,13 +498,13 @@ body {
   /* アニメ無効時に隠れたままにならないよう最終状態を出す */
   .hero__img { opacity: 1 !important; transform: none !important; }
   .hero__welcome span { opacity: 1 !important; transform: none !important; }
+  .carousel__track { scroll-behavior: auto; }
 }
 
 @media (max-width: 560px) {
-  /* スマホ：2枚でも縦積みにして各写真が大きくなりすぎないよう抑える */
-  .article__photos.count-2 { grid-template-columns: 1fr; }
-  .article__photos.count-2 img { aspect-ratio: 3 / 2; max-height: 44vh; }
+  /* スマホ：写真が大きくなりすぎないよう最大高さを抑える */
   .article__photos.count-1 img { max-width: 100%; max-height: 48vh; }
+  .carousel__track { height: clamp(200px, 48vh, 360px); }
 }
 
 @media (max-width: 460px) {

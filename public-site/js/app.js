@@ -51,7 +51,7 @@ async function loadPosts() {
       pinned: d.pinned === true,
       status: d.status,
       category: d.category || "other",
-      photos: Array.isArray(d.photos) ? d.photos.slice(0, 2) : [],
+      photos: Array.isArray(d.photos) ? d.photos.slice(0, MAX_PHOTOS) : [],
       date: d.date || "",
       title: d.title || "",
       editorName: d.editorName || "",
@@ -67,6 +67,7 @@ async function loadPosts() {
 /* ----------------------- 状態 ----------------------- */
 let ALL_POSTS = [];
 const PAGE_SIZE = 5;
+const MAX_PHOTOS = 5; // 1記事あたりの写真は最大5枚
 // いま表示している絞り込み条件とページ番号
 let view = { year: null, category: null, page: 1 };
 
@@ -234,6 +235,119 @@ function renderPagination(totalPages) {
   });
 }
 
+/* ----------------------- 写真カルーセル ----------------------- */
+/* 記事の写真を container に組み立てる。
+   0枚 → 非表示 ／ 1枚 → そのまま中央に1枚 ／ 複数 → 横スワイプ（スマホ）＋
+   左右の矢印（PC）＋ドットインジケーターで切り替えるカルーセル。
+   labels = { region, prev, next, goto(n) } は表示言語に合わせて呼び出し側で渡す。
+   HTMLには構造を書かず、ここで組み立てる方針。 */
+function carouselChevron(dir) {
+  const d = dir === "prev" ? "M15 5l-7 7 7 7" : "M9 5l7 7-7 7";
+  return `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+}
+
+function buildPhotoCarousel(container, urls, altText, labels) {
+  const pics = (Array.isArray(urls) ? urls : []).filter(Boolean).slice(0, MAX_PHOTOS);
+
+  container.innerHTML = "";
+  container.className = "article__photos";
+  container.hidden = pics.length === 0;
+  if (pics.length === 0) return;
+
+  // 1枚：カルーセルなし（従来どおり中央に大きく1枚）
+  if (pics.length === 1) {
+    container.classList.add("count-1");
+    const only = document.createElement("img");
+    only.src = pics[0];
+    only.alt = altText || "";
+    only.loading = "lazy";
+    container.appendChild(only);
+    return;
+  }
+
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const carousel = document.createElement("div");
+  carousel.className = "carousel";
+
+  const track = document.createElement("div");
+  track.className = "carousel__track";
+  track.setAttribute("role", "group");
+  track.setAttribute("aria-label", labels.region);
+
+  pics.forEach((src, i) => {
+    const slide = document.createElement("div");
+    slide.className = "carousel__slide";
+    const img = document.createElement("img");
+    img.src = src;
+    img.alt = altText ? `${altText}（${i + 1}/${pics.length}）` : "";
+    img.loading = i === 0 ? "eager" : "lazy";
+    slide.appendChild(img);
+    track.appendChild(slide);
+  });
+
+  const makeArrow = (dir, label) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = `carousel__arrow carousel__arrow--${dir}`;
+    b.setAttribute("aria-label", label);
+    b.innerHTML = carouselChevron(dir);
+    return b;
+  };
+  const prev = makeArrow("prev", labels.prev);
+  const next = makeArrow("next", labels.next);
+  carousel.append(prev, track, next);
+
+  const dots = document.createElement("div");
+  dots.className = "carousel__dots";
+  dots.setAttribute("role", "group");
+  dots.setAttribute("aria-label", labels.region);
+  const dotEls = pics.map((_, i) => {
+    const d = document.createElement("button");
+    d.type = "button";
+    d.className = "carousel__dot";
+    d.setAttribute("aria-label", labels.goto(i + 1));
+    dots.appendChild(d);
+    return d;
+  });
+
+  container.append(carousel, dots);
+
+  let current = -1;
+  const clampIdx = (i) => Math.max(0, Math.min(pics.length - 1, i));
+  const sync = (i) => {
+    i = clampIdx(i);
+    if (i === current) return;
+    current = i;
+    dotEls.forEach((d, k) => d.classList.toggle("is-active", k === i));
+    prev.disabled = i === 0;
+    next.disabled = i === pics.length - 1;
+  };
+  const go = (i) => {
+    i = clampIdx(i);
+    const w = track.clientWidth || 1;
+    track.scrollTo({ left: i * w, behavior: reduce ? "auto" : "smooth" });
+    sync(i);
+  };
+
+  prev.addEventListener("click", () => go(current - 1));
+  next.addEventListener("click", () => go(current + 1));
+  dotEls.forEach((d, i) => d.addEventListener("click", () => go(i)));
+
+  let ticking = false;
+  track.addEventListener("scroll", () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      ticking = false;
+      const w = track.clientWidth || 1;
+      sync(Math.round(track.scrollLeft / w));
+    });
+  }, { passive: true });
+
+  sync(0);
+}
+
 /* ----------------------- 記事詳細 ----------------------- */
 function openArticle(id) {
   const p = ALL_POSTS.find((x) => x.id === id);
@@ -243,14 +357,11 @@ function openArticle(id) {
   el("articleEditor").textContent = p.editorName;
   el("articleTitle").textContent = p.title;
 
-  const photos = el("articlePhotos");
-  photos.innerHTML = "";
-  const pics = (p.photos || []).slice(0, 2); // 写真は最大2枚
-  photos.className = "article__photos" + (pics.length === 2 ? " count-2" : pics.length === 1 ? " count-1" : "");
-  pics.forEach((src) => {
-    const img = document.createElement("img");
-    img.src = src; img.alt = p.title; img.loading = "lazy";
-    photos.appendChild(img);
+  buildPhotoCarousel(el("articlePhotos"), p.photos, p.title, {
+    region: "写真",
+    prev: "前の写真",
+    next: "次の写真",
+    goto: (n) => `${n}枚目を表示`
   });
 
   const bodyBox = el("articleBody");
